@@ -5,3 +5,4 @@
 | 01 | 第一章 |
 | 02 | 第二章 |
 | 03 | [第三章 ActiveRecord, Model, 数据库](chapters/chapter-03/chapter-03.md) |
+| 04 | [第四章 表单](chapters/chapter-04/chapter-04.md) |
