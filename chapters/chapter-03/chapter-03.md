@@ -37,7 +37,7 @@ Yii引入了三种方法来允许你使用数据库。他们是：
 4. 在`config/main.php`中配置数据库连接，使用Sakila数据库。
 5. 使用Gii为actor和film表创建模型。
 
-### 如何使用...
+### 如何做...
 
 1. 创建`app/controllers/DbController.php`：
 
@@ -197,12 +197,128 @@ f.title';
 
 | 方法 | Active Record | Query Builder | SQL(DAO) |
 |---|---|---|---|
-| 语法 |  |  |   |
-| 性能 |  |  |   |
-| 更多特性 |  |  |   |
-| 适用于 |  |  |   |
+| 语法 | 能为你处理SQL。<br />Gii会为你创建模型和关系。<br />使用完全面向对象风格的模型和整洁的API。<br />生成一个适当嵌套的模型的数组作为结果。 | 整洁的API，适于一步步创建查询。<br />生成原始数据数组作为结果。 | 适用于复杂的SQL。<br />手动qoute值和关键字。<br />不太适用于一步步创建查询。<br />生成原始数据数组作为结果。 |
+| 性能 | 相对于SQL和Query Builder，内存占用率高，执行时间长。 | Okay | Okay |
+| 更多特性 | 自动quote值和名称。<br />Behaviors. Before/after hook.<br />校验。Prototyping select. | 自动quote值和名称 | 无 |
+| 适用于 | 为单个模型更新、删除和创建（当使用form时尤为便利） | 适用于大量的数据，并能一步步创建查询。 | 使用纯SQL进行复杂的查询，并有尽可能好的性能。 |
+
+### 更多
+
+欲了解更多有关Yii操作数据库，参考如下资源：
+
+- [http://www.yiiframework.com/doc-2.0/guide-db-dao.html](http://www.yiiframework.com/doc-2.0/guide-db-dao.html)
+- [http://www.yiiframework.com/doc-2.0/guide-db-query-builder.html](http://www.yiiframework.com/doc-2.0/guide-db-query-builder.html)
+- [http://www.yiiframework.com/doc-2.0/guide-db-active-record.html](http://www.yiiframework.com/doc-2.0/guide-db-active-record.html)
+
+## 定义和使用多个数据库连接
+
+对于新的单机web应用，多数据库连接并不常用。但是，当你为一个已经存在的系统附加一个应用是，你很可能需要另外一个数据库连接。
+
+在本节中，你将会学习如何定义多个数据库连接并利用DAO、Query Builder和Active Record模型使用它们。
+
+### 准备
+
+1. 按照官方指南[](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 创建两个MySQL数据库，名字分别叫`db1`和`db2`。
+3. 在`db1`中创建一个名叫`post`的表：
+
+```
+DROP TABLE IF EXISTS 'post';
+CREATE TABLE IF NOT EXISTS 'post' (
+  'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  'title' VARCHAR(255) NOT NULL,
+  'text' TEXT NOT NULL,
+  PRIMARY KEY ('id')
+);
+```
+
+4. 在`db2`中创建一个名叫`comment`的表：
+
+```
+DROP TABLE IF EXISTS 'comment';
+CREATE TABLE IF NOT EXISTS 'comment' (
+  'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  'text' TEXT NOT NULL,
+  'post_id' INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY ('id')
+);
+```
+
+### 如何做...
+
+1. 首先配置数据库连接。打开`config/main.php`文件，按照官方指南中的描述，定义一个主连接：
+
+```
+'db' => [
+    'connectionString' =>'mysql:host=localhost;dbname=db1',
+    'username' => 'root',
+    'password' => '',
+    'charset' => 'utf8',
+],
+```
+
+2. 复制它，重命名`db`组件为`db2`，并相应修改`connectionString`。同时，你需要按照如下方式添加`class`：
+
+```
+'db2' => [
+    'class'=>'yii\db\Connection',
+    'connectionString' => 'mysql:host=localhost;dbname=db2',
+    'username' => 'root',
+    'password' => '',
+    'charset' => 'utf8',
+],
+```
+
+3. 现在你有两个数据库连接，你可以按如下方式利用DAO和Query Builder使用它们：
+
+```
+$rows1 = Yii::$app->db->createCommand($sql)->queryAll();
+$rows2 = Yii::$app->db2->createCommand($sql)->queryAll();
+```
+
+4. 现在，如何我们需要使用Active Record模型，首先我们需要使用Gii创建Post和Comment模型。你可以为每一个模型选择一个合适的连接。当你创建Comment模型时，将数据库连接ID设置为`db2`，如下截图所示：
 
 ![](../images/302.png)
+
+5. 现在你可以按往常一样使用`Comment`模型，并创建`controllers/DbController.php`：
+
+```
+<?php
+namespace app\controllers;
+use app\models\Post;
+use app\models\Comment;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Html;
+use yii\web\Controller;
+/**
+ * Class DbController.
+ * @package app\controllers
+ */
+
+class DbController extends Controller
+{
+    public function actionIndex()
+    {
+        $post = new Post();
+        $post->title = 'Post #'.rand(1, 1000);
+        $post->text = 'text';
+        $post->save();
+        $posts = Post::find()->all();
+        echo Html::tag('h1', 'Posts');
+        echo Html::ul(ArrayHelper::getColumn($posts, 'title'));
+        $comment = new Comment();
+        $comment->post_id = $post->id;
+        $comment->text = 'comment #'.rand(1, 1000);
+        $comment->save();
+        $comments = Comment::find()->all();
+        echo Html::tag('h1', 'Comments');
+        echo Html::ul(ArrayHelper::getColumn($comments,
+            'text'));
+    }
+}
+```
+
+6. 运行`db/index`多次，然后你将会看到记录保存到了两个数据库中，如下截图所示：
 
 ![](../images/303.png)
 
