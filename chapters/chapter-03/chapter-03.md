@@ -684,9 +684,7 @@ $model->touch('creation_date');
 
 ### 参考
 
-欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/guide-conceptbehaviors.
-html#using-timestampbehavior](http://www.yiiframework.com/doc-2.0/guide-conceptbehaviors.
-html#using-timestampbehavior)
+欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/guide-conceptbehaviors.html#using-timestampbehavior](http://www.yiiframework.com/doc-2.0/guide-conceptbehaviors.html#using-timestampbehavior)
 
 ## 自动设置一个作者
 
@@ -808,17 +806,180 @@ class TestController extends Controller
 $model->detachBehavior('blammable');
 ```
 
-## 参考
+### 参考
 
-欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/yii-behaviorsblameablebehavior.
-html](http://www.yiiframework.com/doc-2.0/yii-behaviorsblameablebehavior.
-html)。
+欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/yii-behaviorsblameablebehavior.html](http://www.yiiframework.com/doc-2.0/yii-behaviorsblameablebehavior.html)。
+
+## 自动设置一个slug
+
+在web中，slug是一个用于URL中的短文本，用来标识和描述一个资源。slug是URL的一部分，它使用可读的关键词标定一个网页。Sluggable行为是Yii2模型行为，它能为我们生成唯一的slugs。
+
+在本节中，我们将会指导你修改Yii默认URL，修改成一个用户友好和搜索引擎友好的格式。Yii通过一个sluggable行为为这个提供内置支持。
+
+### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 设置数据库连接，并创建一个名为`blog_post`的表：
+
+```
+DROP TABLE IF EXISTS 'blog_post';
+CREATE TABLE IF NOT EXISTS 'blog_post' (
+  'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  'title' VARCHAR(255) NOT NULL,
+  'slug' VARCHAR(255) NOT NULL,
+  'text' TEXT NOT NULL,
+  PRIMARY KEY ('id')
+);
+```
+
+3. 使用Gii为帖子表创建一个模型。
+
+### 如何做...
+
+1. 为`models/BlogPost.php`添加如下`behaviors`方法：
+
+```
+<?php
+namespace app\models;
+use Yii;
+use yii\db\BaseActiveRecord;
+class BlogPost extends \yii\db\ActiveRecord
+{
+    // ..
+    public function behaviors()
+    {
+        return [
+            [
+                'class' => 'yii\behaviors\SluggableBehavior',
+                'attribute' => 'title',
+                'slugAttribute' => 'slug',
+                'immutable'=> false,
+                'ensureUnique' => true
+            ]
+        ];
+    }
+    // ..
+}
+```
+
+2. 创建`controllers/TestController.php`：
+
+```
+<?php
+namespace app\controllers;
+use app\models\BlogPost;
+use Yii;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+/**
+ * Class TestController
+ * @package app\controllers
+ */
+class TestController extends Controller
+{
+    public function actionIndex()
+    {
+        $blogPostA = new BlogPost();
+        $blogPostA->title = 'Super Quote title 1';
+        $blogPostA->text = 'The price of success is hard work, dedication to the job at hand';
+        $blogPostA->save();
+        $blogPostB = new BlogPost();
+        $blogPostB->title = 'Super Quote title 2';
+        $blogPostB->text = 'Happiness lies in the joy of achievement...';
+        $blogPostB->save();
+        return $this->renderContent(
+            '<pre>' .
+            VarDumper::dumpAsString(
+                $blogPostA->attributes
+            ).
+            VarDumper::dumpAsString(
+                $blogPostB->attributes
+            ) .
+            '</pre>'
+        );
+    }
+}
+```
+
+3. 结果如下：
 
 ![](../images/308.png)
 
+### 工作原理...
+
+- Yii为`SluggableBehavior`提供了一些友好的增强功能。
+- 例如，一旦一个搜索引擎记录了一个slug，你不要再修改页面的URL。
+- 不可变的属性告诉Yii在首次创建后保持slug不变——尽管标题被修改了。
+- 如果用户输入消息覆盖了内容，`ensureUnique`属性将会自动附加一个唯一的后缀到复件中。这保证了每一个消息都有一个唯一的URL，即时是消息是唯一的。
+- 如果你创建了另一个帖子，和之前有相同的内容，你将会看到它的slug自动增加为hot-update-for-ios-devices-2。
+
+#### 注意
+
+**注意**：如果你收到了一个关于这个不可变属性的错误，也许是因为你需要运行Composer来更新你的Yii到最新版本。
+
+### 更多...
+
+1. 使用Gii为模型`app\models\Post`生成CRUD和控制器`app\controllers\BlogPostController`。
+2. 添加如下动作到`app\controllers\BlogPostController`：
+
+```
+/**
+ * @param $slug
+ *
+ * @return string
+ * @throws NotFoundHttpException
+ */
+public function actionSlug($slug)
+{
+    $model = BlogPost::findOne(['slug'=>$slug]);
+    if ($model === null) {
+        throw new NotFoundHttpException('The requested page does not exist.');
+    }
+    return $this->render('view', [
+        'model' => $model,
+    ]);
+}
+```
+
+3. 如果你使用slug值`sluggablebehavior-test`运行`blogpost/slug`，你将会得到如下结果：
+
 ![](../images/309.png)
 
+4. 建议使用一个`Post`模型的实例完成先前的slug小节。
+5. 为了美化URL，在`config/web.php`中添加如下`urlManager`组件：
+
+```
+//..
+'urlManager' => [
+    'enablePrettyUrl' => true,
+    'rules' => [
+        'blog-post' => 'blog-post/index',
+        'blog-post/index' => 'blog-post/index',
+        'blog-post/create' => 'blog-post/create',
+        'blog-post/view/<id:\d+>' => 'blog-post/view',
+        'blog-post/update/<id:\d+>' => 'blog-post/update',
+        'blog-post/delete/<id:\d+>' => 'blog-post/delete',
+        'blog-post/<slug>' => 'blog-post/slug',
+        'defaultRoute' => '/site/index',
+    ],
+]
+//..
+```
+
+6. 注意`blog-post/<slug>' => 'blog-post/slug`规则。
+7. 如果你使用你的slug URL访问网页，例如`index.php/blog-post/super-quote-title-1/`，你将会得到类似步骤3中的结果：
+
 ![](../images/310.png)
+
+### 参考
+
+欲了解更多信息，参考：
+
+- [http://www.yiiframework.com/doc-2.0/yii-behaviors-sluggablebehavior.html](http://www.yiiframework.com/doc-2.0/yii-behaviors-sluggablebehavior.html)
+- [http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html#url-rules](http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html#url-rules)
+
+## 事务
 
 ![](../images/311.png)
 
