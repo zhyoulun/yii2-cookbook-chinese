@@ -11,7 +11,7 @@
 - 自动设置一个slug
 - 事务
 - 复制和读写分离
-- Implementing 单表 inheritance
+- 实现单表继承
 
 ## 介绍
 
@@ -981,10 +981,502 @@ public function actionSlug($slug)
 
 ## 事务
 
+在现代数据库中，事务可以做一些别的事情，例如保证在别人写数据的时候你没有访问数据的权限。但是，基本的思想是一样的——事务能保证无论发生什么事情，你使用的数据都是可感知的。他们保证不存在这样这样一种情况，钱从一个账户中拿走了，但没有进入另外一个账户中。
+
+Yii2支持强大的带有保存点的事务机制。
+
+一个经典的例子是，将钱从一个银行账户转移到另外一个银行账户中。为了做到这一点，首先你需要从源账户中取出钱，然后转移到目标账户中。这个操作必须全部成功。如果半道终止了，钱将会丢失。例如，我们有一个接收账户和一个发送账户。我们需要将钱从发送账户转移到接收账户中。假设我们有一个账户模型。
+
+### 准备...
+
+账户模型非常简单，只包含`id`和`balance`两个字段。
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 创建一个migration，它会使用如下命令添加一个账户表：
+
+```
+./yii migrate/create create_account_table
+```
+
+3. 同时，使用如下代码更新刚刚创建的migration：
+
+```
+<?php
+use yii\db\Schema;
+use yii\db\Migration;
+class m150620_062034_create_account_table extends Migration
+{
+    const TABLE_NAME = '{{%account}}';
+    public function up()
+    {
+        $tableOptions = null;
+        if ($this->db->driverName === 'mysql') {
+            $tableOptions = 'CHARACTER SET utf8 COLLATE utf8_general_ci ENGINE=InnoDB';
+        }
+        $this->createTable(self::TABLE_NAME, [
+            'id' => Schema::TYPE_PK,
+            'balance' => ' NUMERIC(15,2) DEFAULT NULL',
+        ], $tableOptions);
+    }
+    public function down()
+    {
+        $this->dropTable(self::TABLE_NAME);
+    }
+}
+```
+
+4. 然后使用如下命令安装migration：
+
+```
+./yii migrate up
+```
+
+5. 使用Gii为账户表创建模型。
+6. 创建一个migration，他会添加一些测试`Account`模型到表中：
+
+```
+./yii migrate/create add_account_records
+```
+
+7. 同时，使用如下代码更新刚刚创建的migration：
+
+```
+<?php
+use yii\db\Migration;
+use app\models\Account;
+class m150620_063252_add_account_records extends Migration
+{
+    public function up()
+    {
+        $accountFirst = new Account();
+        $accountFirst->balance = 1110;
+        $accountFirst->save();
+        $accountSecond = new Account();
+        $accountSecond->balance = 779;
+        $accountSecond->save();
+        $accountThird = new Account();
+        $accountThird->balance = 568;
+        $accountThird->save();
+        return true;
+    }
+    public function down()
+    {
+        $this->truncateTable('{{%account}}');
+        return false;
+    }
+}
+```
+
+### 如何做...
+
+1. 添加如下规则到`models/Account.php`中的`rules`方法：
+
+```
+public function rules()
+{
+    return [
+        //..
+        [['balance'], 'number', 'min' => 0],
+        //..
+    ];
+}
+```
+
+2. 假设balance只能是正的，不能是负值。
+3. 给`TestController`创建success和error动作：
+
+```
+<?php
+namespace app\controllers;
+use app\models\Account;
+use Yii;
+use yii\db\Exception;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+class TestController extends Controller
+{
+    public function actionSuccess()
+    {
+        $transaction = Yii::$app->db->beginTransaction();
+        try {
+            $recipient = Account::findOne(1);
+            $sender = Account::findOne(2);
+            $transferAmount = 177;
+            $recipient->balance += $transferAmount;
+            $sender->balance -= $transferAmount;
+            if ($sender->save() && $recipient->save()) {
+                $transaction->commit();
+                return $this->renderContent(
+                    Html::tag('h1', 'Money transfer was successfully')
+                );
+            } else {
+                $transaction->rollBack();
+                throw new Exception('Money transfer failed:' .
+                    VarDumper::dumpAsString($sender->getErrors()) .
+                    VarDumper::dumpAsString($recipient->getErrors())
+                );
+            }
+        } catch ( Exception $e ) {
+            $transaction->rollBack();
+            throw $e;
+        }
+    }
+    public function actionError()
+    {
+        $transaction = Yii::$app->db->beginTransaction();
+        try {
+            $recipient = Account::findOne(1);
+            $sender = Account::findOne(3);
+            $transferAmount = 1000;
+            $recipient->balance += $transferAmount;
+            $sender->balance -= $transferAmount;
+            if ($sender->save() && $recipient->save()) {
+                $transaction->commit();
+                return $this->renderContent(
+                    Html::tag('h1', 'Money transfer was successfully')
+                );
+            } else {
+                $transaction->rollBack();
+                throw new Exception('Money transfer failed: ' .
+                    VarDumper::dumpAsString($sender->getErrors()) .
+                    VarDumper::dumpAsString($recipient->getErrors())
+                );
+            }
+        } catch ( Exception $e ) {
+            $transaction->rollBack();
+            throw $e;
+        }
+    }
+}
+```
+
+4. 运行`test/success`你会得到如下输出：
+
 ![](../images/311.png)
+
+5. 在这中情况下，如果发生了一些错误，事务机制不会更新接收者账户和发送者账户。
+6. 运行`test/error`你将会得到如下输出：
 
 ![](../images/312.png)
 
+如果你记得，我们给`Account`模型添加了一条规则，所以我们的账户只能是正的。在这种情况下，事务将会回滚，它阻止了从发送者账户中取出钱，但没有钱到接收者账户中的情况。
+
+### 参考
+
+欲了解更多信息，参考：
+
+- [http://www.yiiframework.com/doc-2.0/guide-db-dao.html#performing-transactions](http://www.yiiframework.com/doc-2.0/guide-db-dao.html#performing-transactions)
+- [http://www.yiiframework.com/doc-2.0/guide-db-dao.html#nesting-transactions](http://www.yiiframework.com/doc-2.0/guide-db-dao.html#nesting-transactions)
+
+## 复制和读写分离
+
+在本节中，我们将学习如何复制和读写分离。我们将会看到slave和master服务器如何帮助我们做到这些。
+
+### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 设置数据库连接并创建一个名叫`post`的表：
+
+```
+DROP TABLE IF EXISTS 'blog_post';
+CREATE TABLE IF NOT EXISTS 'blog_post' (
+  'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  'title' VARCHAR(255) NOT NULL,
+  'text' TEXT NOT NULL,
+  'created_at' INTEGER,
+  'modified_at'INTEGER,
+  PRIMARY KEY ('id')
+);
+```
+
+3. 为表`blog_post`创建`BlogPost`模型。
+4. 按照文章[https://www.digitalocean.com/community/tutorials/how-to-set-up-master-slave-replication-inmysql/](https://www.digitalocean.com/community/tutorials/how-to-set-up-master-slave-replication-inmysql/)中的描述，在你的数据库服务器之间，配置主从复制。
+5. 在`config/main.php`中配置`db`组件，下面是个例子：
+
+```
+'components' => [
+    // ..
+    'db' => [
+        'class' => 'yii\db\Connection',
+        'dsn' => 'mysql:host=4.4.4.4;dbname=masterdb',
+        'username' => 'master',
+        'password' => 'pass',
+        'charset' => 'utf8',
+        'slaveConfig' => [
+            'username' => 'slave',
+            'password' => 'pass',
+        ],
+        // list of slave configurations
+        'slaves' => [
+            ['dsn' => 'mysql:host=5.5.5.5;dbname=slavedb']
+        ]
+    ],
+    //..
+]
+```
+
+### 如何做...
+
+1. 创建`TestController.php`：
+
+```
+<?php
+namespace app\controllers;
+use app\models\BlogPost;
+use Yii;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+/**
+ * Class TestController
+ * @package app\controllers
+ */
+class TestController extends Controller
+{
+    public function actionIndex(){
+        $masterModel = new BlogPost();
+        $masterModel->title = 'Awesome';
+        $masterModel->text = 'Something is going on..';
+        $masterModel->save();
+        $postId = $masterModel->id;
+        $replModel = BlogPost::findOne($postId);
+        return $this->renderContent(
+            Html::tag('h2', 'Master') .
+            Html::tag('pre', VarDumper::dumpAsString(
+                $masterModel
+                    ? $masterModel->attributes
+                    : null
+            )) .
+            Html::tag('h2', 'Slave') .
+            Html::tag('pre', VarDumper::dumpAsString(
+                $replModel
+                    ? $replModel->attributes
+                    : null
+            ))
+        );
+    }
+}
+```
+
+2. 运行`test/index`，你将会得到如下输出：
+
 ![](../images/313.png)
 
+### 工作原理...
+
+slave服务器用于数据读取，master服务器用于数据写入。ActiveRecord模型保存到master服务器中，数据复制到slave服务器中，然后`$replModel`在它上边找到。
+
+### 更多...
+
+`\yii\db\Connection`组件支持负载均衡和slaves之间的失效转移。当首都执行一个读查询时，`\yii\db\Connection`组件将会随机挑选一个slave并进行连接。如果这个slave死掉了，它将会尝试另外一个。如果所有的slaves都不可用，它将会连接到master。通过配置一个服务器状态缓存，死掉的服务器将会被记住，它将会在一段时间内不会被使用。
+
+### 参考
+
+欲了解更多信息，参考如下链接：
+
+- [http://www.yiiframework.com/doc-2.0/guide-db-dao.html#replication-and-read-write-splitting](http://www.yiiframework.com/doc-2.0/guide-db-dao.html#replication-and-read-write-splitting)
+- [http://dev.mysql.com/doc/refman/5.6/en/replication.html](http://dev.mysql.com/doc/refman/5.6/en/replication.html)
+- [http://docs.mongodb.org/manual/tutorial/deploy-replica-set/](http://docs.mongodb.org/manual/tutorial/deploy-replica-set/)
+- [http://docs.mongodb.org/manual/tutorial/deploy-replica-set-for-testing/](http://docs.mongodb.org/manual/tutorial/deploy-replica-set-for-testing/)
+
+## 实现单表继承
+
+关系数据库不支持继承。如果我们需要在数据库中存储继承，我们需要通过代码来支持它。这个代码应该是高效的，从而它应该生成尽量少的JOINs。一个常见的解决方法是*Matrin Fowler*提出的，叫做**单表继承**。
+
+当我们使用这个模式时，我们在一张表中存储所有的类树数据，并使用这个类型字段来决定模型的每一行。
+
+作为一个例子，我们希望实现如下单表继承：
+
+Car
+|- SportCar
+|- FamilyCar
+
+### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 创建并设置一个数据库，添加如下表格：
+
+```
+DROP TABLE IF EXISTS 'car';
+CREATE TABLE 'car' (
+  'id' int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  'name' varchar(255) NOT NULL,
+  'type' varchar(100) NOT NULL,
+  PRIMARY KEY ('id')
+);
+INSERT INTO 'car' ('name', 'type')
+  VALUES ('Ford Focus', 'family'),
+  ('Opel Astra', 'family'),
+  ('Kia Ceed', 'family'),
+  ('Porsche Boxster', 'sport'),
+  ('Ferrari 550', 'sport');
+```
+
+3. 使用Gii为`car`表创建一个`Car`模型，并未`Car`模型生成ActiveQuery。
+
+### 如何做...
+
+1. 添加如下方法和属性到`models/CarQuery.php`：
+
+```
+/**
+ * @var
+ */
+public $type;
+/**
+ * @param \yii\db\QueryBuilder $builder
+ *
+ * @return \yii\db\Query
+ */
+public function prepare($builder)
+{
+    if ($this->type !== null) {
+        $this->andWhere(['type' => $this->type]);
+    }
+    return parent::prepare($builder);
+}
+```
+
+2. 创建`models/SportCar.php`：
+
+```
+<?php
+namespace app\models;
+use Yii;
+/**
+ * Class SportCar
+ * @package app\models
+ */
+class SportCar extends Car
+{
+    const TYPE = 'sport';
+    /**
+     * @return CarQuery
+     */
+    public static function find()
+    {
+        return new CarQuery(get_called_class(), ['where' =>
+            ['type' => self::TYPE]]);
+    }
+    /**
+     * @param bool $insert
+     *
+     * @return bool
+     */
+    public function beforeSave($insert)
+    {
+        $this->type = self::TYPE;
+        return parent::beforeSave($insert);
+    }
+}
+```
+
+3. 创建`models/FamilyCar.php`：
+
+```
+<?php
+namespace app\models;
+use Yii;
+/**
+ * Class FamilyCar
+ * @package app\models
+ */
+class FamilyCar extends Car
+{
+    const TYPE = 'family';
+    /**
+     * @return CarQuery
+     */
+    public static function find()
+    {
+        return new CarQuery(get_called_class(), ['where' =>
+            ['type' => self::TYPE]]);
+    }
+    /**
+     * @param bool $insert
+     *
+     * @return bool
+     */
+    public function beforeSave($insert)
+    {
+        $this->type = self::TYPE;
+        return parent::beforeSave($insert);
+    }
+}
+```
+
+4. 添加如下方法到`models/Car.php`：
+
+```
+/**
+ * @param array $row
+ *
+ * @return Car|FamilyCar|SportCar
+ */
+public static function instantiate($row)
+{
+    switch ($row['type']) {
+        case SportCar::TYPE:
+            return new SportCar();
+        case FamilyCar::TYPE:
+            return new FamilyCar();
+        default:
+            return new self;
+    }
+}
+```
+
+5. 添加`TestController`：
+
+```
+<?php
+namespace app\controllers;
+use app\models\Car;
+use app\models\FamilyCar;
+use Yii;
+use yii\helpers\Html;
+use yii\web\Controller;
+/**
+ * Class TestController
+ * @package app\controllers
+ */
+class TestController extends Controller
+{
+    public function actionIndex()
+    {
+        echo Html::tag('h1', 'All cars');
+        $cars = Car::find()->all();
+        foreach ($cars as $car) {
+            // Each car can be of class Car, SportCar or FamilyCar
+            echo get_class($car).' '.$car->name."<br />";
+        }
+        
+        echo Html::tag('h1', 'Family cars');
+        $familyCars = FamilyCar::find()->all();
+        foreach($familyCars as $car)
+        {
+            // Each car should be FamilyCar
+            echo get_class($car).' '.$car->name."<br />";
+        }
+    }
+}
+```
+
+6. 运行`test/index`，你将会得到如下输出：
+
 ![](../images/314.png)
+
+### 工作原理...
+
+基础模型`Car`是一个典型的Yii AR模型，除了他有两个额外的方法。`tableName`方法明确声明了模型使用的表名。单对于`Car`模型，这没有意义，单对于子模型，它将会返回相同的car表，这就是我们想要的——整个类树用一个表。instantiate方法被用于AR内部，当我们调用方法例如`Car::find()->all()`，用于创建一个模型的实例。我们使用一个`switch`来创建不同的类。
+
+`SportCar`和`FamilyCar`模型只是设置了缺省的AR作用域，所以当我们使用`SportCar::model()->`方法查询模型时，我们只会得到`SportCar`模型。
+
+### 参考
+
+参考如下地址，了解更多关于单表继承模式，和Yii Active Record实现：
+
+- [http://martinfowler.com/eaaCatalog/singleTableInheritance.html](http://martinfowler.com/eaaCatalog/singleTableInheritance.html)
+- [https://blog.liip.ch/archive/2012/03/27/table-inheritance-with-doctrine.html](https://blog.liip.ch/archive/2012/03/27/table-inheritance-with-doctrine.html)
+- [http://www.yiiframework.com/doc/api/CActiveRecord/](http://www.yiiframework.com/doc/api/CActiveRecord/)
