@@ -773,9 +773,137 @@ Yii2框架有一个官方Twitter Bootstrap扩展，它提供了一系列Twitter 
 
 ### 准备
 
+```
+./yii migrate/create create_table_contest_and_prize_table
+```
+
+
+```
+public function up()
+{
+    $tableOptions = null;
+    if ($this->db->driverName === 'mysql') {
+        $tableOptions = 'CHARACTER SET utf8 COLLATE
+utf8_general_ci ENGINE=InnoDB';
+    }
+    $this->createTable('{{%contest}}', [
+        'id' => Schema::TYPE_PK,
+        'name' => Schema::TYPE_STRING . ' NOT NULL',
+    ], $tableOptions);
+    $this->createTable('{{%prize}}', [
+        'id' => Schema::TYPE_PK,
+        'name' => Schema::TYPE_STRING,
+        'amount' => Schema::TYPE_INTEGER,
+    ], $tableOptions);
+    $this->createTable('{{%contest_prize_assn}}', [
+        'contest_id' => Schema::TYPE_INTEGER,
+        'prize_id' => Schema::TYPE_INTEGER,
+    ], $tableOptions);
+    $this->addForeignKey('fk_contest_prize_assn_contest_id', '{{%contest_prize_assn}}', 'contest_id', '{{%contest}}', 'id');
+    $this->addForeignKey('fk_contest_prize_assn_prize_id', '{{%contest_prize_assn}}', 'prize_id', '{{%prize}}', 'id');
+}
+
+public function down()
+{
+    $this->dropForeignKey('fk_contest_prize_assn_contest_id', '{{%contest_prize_assn}}');
+    $this->dropForeignKey('fk_contest_prize_assn_prize_id', '{{%contest_prize_assn}}');
+    $this->dropTable('{{%contest_prize_assn}}');
+    $this->dropTable('{{%prize}}');
+    $this->dropTable('{{%contest}}');
+}
+```
+
+
+```
+./yii migrate/up
+```
+
 ### 如何做...
 
+
+```
+<?php
+namespace app\controllers;
+use app\models\Contest;
+use app\models\ContestPrizeAssn;
+use app\models\Prize;
+use Yii;
+use yii\base\Model;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+class ContestController extends Controller
+{
+    public function actionCreate()
+    {
+        $contestName = 'Happy New Year';
+        $firstPrize = new Prize();
+        $firstPrize->name = 'Iphone 6s';
+        $firstPrize->amount = 4;
+        $secondPrize = new Prize();
+        $secondPrize->name = 'Sony Playstation 4';
+        $secondPrize->amount = 2;
+        $contest = new Contest();
+        $contest->name = $contestName;
+        $prizes = [$firstPrize, $secondPrize];
+        if ($contest->validate() &&
+            Model::validateMultiple($prizes)) {
+            $contest->save(false);
+            foreach ($prizes as $prize) {
+                $prize->save(false);
+                $contestPrizeAssn = new ContestPrizeAssn();
+                $contestPrizeAssn->prize_id = $prize->id;
+                $contestPrizeAssn->contest_id = $contest>id;
+                $contestPrizeAssn->save(false);
+            }
+            return $this->renderContent(
+                'All prizes have been successfully saved!'
+            );
+        } else {
+            return $this->renderContent(
+                VarDumper::dumpAsString($contest->getErrors())
+            );
+        }
+    }
+    public function actionUpdate()
+    {
+        $prizes = Prize::find()->all();
+        if (Model::loadMultiple($prizes,
+                Yii::$app->request->post()) &&
+            Model::validateMultiple($prizes)) {
+            foreach ($prizes as $prize) {
+                $prize->save(false);
+            }
+            return $this->renderContent(
+                'All prizes have been successfully saved!'
+            );
+        }
+        return $this->render('update', ['prizes' => $prizes]);
+    }
+}
+```
+
+
+```
+<?php
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+$form = ActiveForm::begin();
+foreach ($prizes as $i => $prize) {
+    echo $form->field($prize,
+        "[$i]amount")->label($prize->name);
+}
+echo Html::submitButton('submit' , ['class' => 'btn btn-success']);
+ActiveForm::end();
+```
+
+
+
 ### 工作原理...
+
+
+```
+if ($contest->validate() && Model::validateMultiple($prizes)) { ...}
+```
 
 ### 参考
 
@@ -786,6 +914,86 @@ Yii2框架有一个官方Twitter Bootstrap扩展，它提供了一系列Twitter 
 
 ### 如何做...
 
+
+```
+<?php
+namespace app\models;
+use app\components\WordsValidator;
+use yii\base\Model;
+class DeliveryForm extends Model
+{
+    const TYPE_PICKUP = 1;
+    const TYPE_COURIER = 2;
+    public $type;
+    public $address;
+    public function rules()
+    {
+        return [
+            ['type', 'required'],
+            ['type', 'in', 'range'=>[self::TYPE_PICKUP,
+                self::TYPE_COURIER]],
+            ['address', 'required', 'when' => function ($model)
+            {
+                return $model->type == self::TYPE_COURIER;
+            }, 'whenClient' => "function (attribute, value) {return $('#deliveryform-type').val() =='".self::TYPE_COURIER."';}"]
+        ];
+    }
+    public function typeList()
+    {
+        return [
+            self::TYPE_PICKUP => 'Pickup',
+            self::TYPE_COURIER => 'Courier delivery',
+        ];
+    }
+}
+```
+
+
+```
+<?php
+namespace app\controllers;
+use Yii;
+use yii\web\Controller;
+use app\models\DeliveryForm;
+class ValidationController extends Controller
+{
+    public function actionIndex()
+    {
+        $model = new DeliveryForm();
+        if ($model->load(Yii::$app->request->post()) &&
+            $model->validate()) {
+            Yii::$app->session->setFlash('success',
+                'The form was successfully processed!'
+            );
+        }
+        return $this->render('index', array(
+            'model' => $model,
+        ));
+    }
+}
+```
+
+
+
+```
+<?php
+use yii\bootstrap\ActiveForm;
+use yii\helpers\Html;
+?>
+    <h1>Delivery form</h1>
+<?php if (Yii::$app->session->hasFlash('success')): ?>
+    <div class="alert alert-success"><?= Yii::$app->session->getFlash('success'); ?></div>
+<?php endif; ?>
+<?php $form = ActiveForm::begin(); ?>
+<?= $form->field($model, 'type')->dropDownList($model->typeList(), ['prompt'=>'Select delivery type']) ?>
+<?= $form->field($model, 'address') ?>
+    <div class="form-group">
+        <?= Html::submitButton('Submit', ['class' => 'btn btn-primary']) ?>
+    </div>
+<?php ActiveForm::end(); ?>
+```
+
+
 ### 工作原理...
 
 ### 参考
@@ -795,7 +1003,125 @@ Yii2框架有一个官方Twitter Bootstrap扩展，它提供了一系列Twitter 
 
 ### 准备
 
+```
+<?php
+use yii\db\Schema;
+use yii\db\Migration;
+use app\models\Product;
+class m150813_161817_create_order_form_tables extends Migration
+{
+    public function up()
+    {
+        $tableOptions = null;
+        if ($this->db->driverName === 'mysql') {
+            $tableOptions = 'CHARACTER SET utf8 COLLATE utf8_general_ci ENGINE=InnoDB';
+        }
+        $this->createTable('user', [
+            'id' => Schema::TYPE_PK,
+            'first_name' => Schema::TYPE_STRING . ' NOT NULL',
+            'last_name' => Schema::TYPE_STRING . ' NOT NULL',
+            'phone' => Schema::TYPE_STRING . ' NOT NULL',
+        ], $tableOptions);
+        $this->createTable('product', [
+            'id' => Schema::TYPE_PK,
+            'title' => Schema::TYPE_STRING . ' NOT NULL',
+            'price' => Schema::TYPE_FLOAT . '(6,2) ',
+        ], $tableOptions);
+        $this->createTable('order', [
+            'id' => Schema::TYPE_PK,
+            'user_id' => Schema::TYPE_INTEGER . ' NULL',
+            'address' => Schema::TYPE_STRING . ' NOT NULL',
+            'product_id' => Schema::TYPE_INTEGER . ' NOT NULL',
+        ], $tableOptions);
+        $product1 = new Product();
+        $product1->title = 'Iphone 6';
+        $product1->price = 400.5;
+        $product1->save();
+        $product3 = new Product();
+        $product3->title = 'Samsung Galaxy Note 5';
+        $product3->price = 900;
+        $product3->save();
+        $this->addForeignKey('fk_order_product_id', 'order', 'product_id', 'product', 'id');
+    }
+    public function down()
+    {
+        $this->dropTable('order');
+        $this->dropTable('user');
+        $this->dropTable('product');
+    }
+}
+```
+
+
+
+```
+./yii migrate/up
+```
+
 ### 如何做...
+
+
+```
+<?php
+namespace app\controllers;
+use app\models\Order;
+use app\models\User;
+use Yii;
+use yii\web\Controller;
+class TestController extends Controller
+{
+    public function actionOrder()
+    {
+        $user = new User();
+        $order = new Order();
+        if ($user->load(Yii::$app->request->post()) &&
+            $order->load(Yii::$app->request->post())) {
+            if ($user->validate() && $order->validate()) {
+                $user->save(false);
+                $order->user_id = $user->id;
+                $order->save(false);
+                $this->redirect(['/test/result', 'id' => $order->id]);
+            }
+        }
+        return $this->render('order', ['user' => $user, 'order' => $order]);
+    }
+    public function actionResult($id)
+    {
+        $order = Order::find($id)->with('product', 'user')->one();
+        return $this->renderContent(
+            'Product: ' . $order->product->title . '</br>' .
+            'Price: ' . $order->product->price . '</br>' .
+            'Customer: ' . $order->user->first_name . ' ' .
+            $order->user->last_name . '</br>' .
+            'Address: ' . $order->address
+        );
+    }
+}
+```
+
+
+```
+<?php
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+use app\models\Product;
+use yii\helpers\ArrayHelper;
+/**
+ * @var $user \app\models\User
+ * @var $order \app\models\Order
+ */
+$form = ActiveForm::begin([
+    'id' => 'order-form',
+    'options' => ['class' => 'form-horizontal'],
+]) ?>
+<?= $form->field($user, 'first_name')->textInput(); ?>
+<?= $form->field($user, 'last_name')->textInput(); ?>
+<?= $form->field($user, 'phone')->textInput(); ?>
+<?= $form->field($order, 'product_id')->dropDownList(ArrayHelper::map(Product::find()->all(), 'id', 'title')); ?>
+<?= $form->field($order, 'address')->textInput(); ?>
+<?= Html::submitButton('Save', ['class' => 'btn btn-primary'])?>
+<?php ActiveForm::end() ?>
+```
 
 ### 工作原理...
 
@@ -806,7 +1132,213 @@ Yii2框架有一个官方Twitter Bootstrap扩展，它提供了一系列Twitter 
 
 ### 准备
 
+
+```
+<?php
+namespace app\models;
+use yii\db\ActiveRecord;
+class Product extends ActiveRecord
+{
+    public function rules()
+    {
+        return [
+            ['title', 'string'],
+            [['title', 'category_id', 'sub_category_id'],
+                'required'],
+            ['category_id', 'exist', 'targetAttribute' => 'id',
+                'targetClass' => 'app\models\Category'],
+            ['sub_category_id', 'exist', 'targetAttribute' =>
+                'id', 'targetClass' => 'app\models\Category'],
+        ];
+    }
+    public function attributeLabels()
+    {
+        return [
+            'category_id' => 'Category',
+            'sub_category_id' => 'Sub category',
+        ]; }
+}
+```
+
+```
+<?php
+namespace app\models;
+use yii\db\ActiveRecord;
+class Category extends ActiveRecord
+{
+    public function rules()
+    {
+        return [
+            ['title', 'string'],
+        ];
+    }
+    /**
+     * @return array
+     */
+    public static function getSubCategories($categoryId)
+    {
+        $subCategories = [];
+        if ($categoryId) {
+            $subCategories = self::find()
+                ->where(['category_id' => $categoryId])
+                ->asArray()
+                ->all();
+        }
+        return $subCategories;
+    }
+}
+```
+
+
+```
+./yii migrate/create create_category_and_product_tables
+```
+
+
+```
+<?php
+use yii\db\Schema;
+use yii\db\Migration;
+class m150813_005030_create_categories extends Migration
+{
+    public function up()
+    {
+        $tableOptions = null;
+        $this->createTable('{{%product}}', [
+            'id' => Schema::TYPE_PK,
+            'category_id' => Schema::TYPE_INTEGER . ' NOT NULL',
+            'sub_category_id' => Schema::TYPE_INTEGER . ' NOT NULL',
+            'title' => Schema::TYPE_STRING . ' NOT NULL',
+        ], $tableOptions);
+        $this->createTable('{{%category}}', [
+            'id' => Schema::TYPE_PK,
+            'category_id' => Schema::TYPE_INTEGER,
+            'title' => Schema::TYPE_STRING . ' NOT NULL',
+        ], $tableOptions);
+        $this->addForeignKey('fk_product_category_id',
+            '{{%product}}', 'category_id', '{{%category}}', 'id');
+        $this->addForeignKey('fk_product_sub_category_id','{{%product}}', 'category_id', '{{%category}}', 'id');
+        $this->batchInsert('{{%category}}', ['id', 'title'], [
+            [1, 'TV, Audio/Video'],
+            [2, 'Photo'],
+            [3, 'Video']
+        ]);
+        $this->batchInsert('{{%category}}', ['category_id', 'title'], [
+            [1, 'TV'],
+            [1, 'Acoustic System'],
+            [2, 'Cameras'],
+            [2, 'Flashes and Lenses '],
+            [3, 'Video Cams'],
+            [3, 'Action Cams'],
+            [3, 'Accessories']
+        ]);
+    }
+    public function down()
+    {
+        $this->dropTable('{{%product}}');
+        $this->dropTable('{{%category}}');
+    }
+}
+```
+
 ### 如何做...
+
+
+```
+<?php
+namespace app\controllers;
+use app\models\Product;
+use app\models\Category;
+use app\models\SubCategory;
+use Yii;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Json;
+use yii\web\Controller;
+use yii\web\HttpException;
+class DropdownController extends Controller
+{
+    public function actionGetSubCategories($id)
+    {
+        if (!Yii::$app->request->isAjax) {
+            throw new HttpException(400, 'Only ajax request is allowed.');
+        }
+        return Json::encode(Category::getSubCategories($id));
+    }
+    public function actionIndex()
+    {
+        $model = new Product();
+        if ($model->load(Yii::$app->request->post()) &&
+            $model->validate()) {
+            Yii::$app->session->setFlash('success',
+                'Model was successfully saved'
+            );
+        }
+        return $this->render('index', [
+            'model' => $model,
+        ]);
+    }
+}
+```
+
+
+```
+<?php
+use yii\bootstrap\ActiveForm;
+use yii\helpers\Html;
+use yii\helpers\Url;
+use app\models\Category;
+use yii\helpers\ArrayHelper;
+use yii\web\View;
+$url = Url::toRoute(['dropdown/get-sub-categories']);
+$this->registerJs("
+(function(){
+var select = $('#product-sub_category_id');
+var buildOptions = function(options) {
+if (typeof options === 'object') {
+select.children('option').remove();
+$('<option />')
+.appendTo(select)
+.html('Select a sub category')
+$.each(options, function(index, option) {
+$('<option />', {value:option.id})
+.appendTo(select)
+.html(option.title);
+});
+}
+};
+var categoryOnChange = function(category_id){
+$.ajax({
+dataType: 'json',
+url: '" . $url . "&id=' + category_id ,
+success: buildOptions});
+};
+window.buildOptions = buildOptions;
+window.categoryOnChange = categoryOnChange;
+})();
+", View::POS_READY);
+?>
+    <h1>Product</h1>
+<?php if (Yii::$app->session->hasFlash('success')): ?>
+    <div class="alert alert-success"><?=
+        Yii::$app->session->getFlash('success'); ?></div>
+<?php endif; ?>
+<?php $form = ActiveForm::begin(); ?>
+<?= $form->field($model, 'title')->textInput() ?>
+<?= $form->field($model,
+    'category_id')->dropDownList(ArrayHelper::map(
+    Category::find()->where('category_id IS NULL')->asArray()->all(),'id', 'title'), [
+    'prompt' => 'Select a category',
+    'onChange' => 'categoryOnChange($(this).val());',
+]) ?>
+<?= $form->field($model, 'sub_category_id')->dropDownList(
+    ArrayHelper::map(Category::getSubCategories($model->sub_category_id), 'id' ,'title'), [
+    'prompt' => 'Select a sub category',
+]) ?>
+<div class="form-group">
+    <?= Html::submitButton('Submit', ['class' => 'btn btn-primary']) ?>
+</div>
+<?php ActiveForm::end(); ?>
+```
 
 ### 工作原理...
 
@@ -817,6 +1349,45 @@ Yii2框架有一个官方Twitter Bootstrap扩展，它提供了一系列Twitter 
 ### 准备
 
 ### 如何做...
+
+
+```
+$form = ActiveForm::begin([
+    'id' => 'contact-form',
+    'enableAjaxValidation' => true,
+]);
+```
+
+
+```
+if (Yii::$app->request->isAjax &&
+$model->load(Yii::$app->request->post())) {
+    Yii::$app->response->format = Response::FORMAT_JSON;
+    return ActiveForm::validate($model);
+}
+```
+
+
+```
+<?php
+public function actionContact()
+{
+    $model = new ContactForm();
+    if (Yii::$app->request->isAjax &&
+        $model->load(Yii::$app->request->post())) {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        return ActiveForm::validate($model);
+    }
+    if ($model->load(Yii::$app->request->post()) && $model->contact(Yii::$app->params['adminEmail'])) {
+        Yii::$app->session->setFlash('contactFormSubmitted');
+        return $this->refresh();
+    } else {
+        return $this->render('contact', [
+            'model' => $model,
+        ]);
+    }
+}
+```
 
 ### 工作原理...
 
@@ -829,7 +1400,152 @@ Yii2框架有一个官方Twitter Bootstrap扩展，它提供了一系列Twitter 
 
 ### 如何做...
 
+
+```
+<?php
+namespace app\components;
+use yii\validators\Validator;
+class WordsValidator extends Validator
+{
+    public $size = 50;
+    public $message = 'The number of words must be less than {size}';
+    public function validateValue($value)
+    {
+        preg_match_all('/(\w+)/i', $value, $matches);
+        if (count($matches[0]) > $this->size) {
+            return [$this->message, ['size' => $this->size]];
+        }
+    }
+    public function clientValidateAttribute($model, $attribute, $view)
+    {
+        $message = strtr($this->message, ['{size}' => $this->size]);
+        return <<<JS
+if (value.split(/\w+/gi).length > $this->size ) {
+    messages.push("$message");
+}
+JS;
+    }
+}
+```
+
+
+```
+<?php
+namespace app\models;
+use app\components\WordsValidator;
+use yii\base\Model;
+class Article extends Model
+{
+    public $title;
+    public function rules()
+    {
+        return [
+            ['title', 'string'],
+            ['title', WordsValidator::className(), 'size' => 10],
+        ];
+    }
+}
+```
+
+
+```
+<?php
+namespace app\controllers;
+use app\models\Article;
+use Yii;
+use yii\web\Controller;
+class ValidationController extends Controller
+{
+    public function actionIndex()
+    {
+        $model = new Article();
+        if ($model->load(Yii::$app->request->post()) &&
+            $model->validate()) {
+            Yii::$app->session->setFlash('success', 'Model is valid');
+        }
+        return $this->render('index', [
+            'model' => $model,
+        ]);
+    }
+}
+```
+
+```
+<?php
+use yii\bootstrap\ActiveForm;
+use yii\helpers\Html;
+?>
+    <h1>Article form</h1>
+<?php if (Yii::$app->session->hasFlash('success')): ?>
+    <div class="alert alert-success"><?= Yii::$app->session->getFlash('success'); ?></div>
+<?php endif; ?>
+<?php $form = ActiveForm::begin(); ?>
+<?= $form->field($model, 'title') ?>
+<div class="form-group">
+    <?= Html::submitButton('Submit', ['class' => 'btn btn-primary']) ?>
+</div>
+<?php ActiveForm::end(); ?>
+```
+
+
+
+
 ### 工作原理...
+
+
+```
+..
+['title', WordsValidator::className(), 'size' => 10],
+..
+```
+
+
+```
+<?php
+namespace app\components;
+use yii\validators\Validator;
+use yii\helpers\Url;
+class WordsValidator extends Validator
+{
+    public $size = 50;
+    public $message = 'The number of words must be less than {size}';
+    public function validateValue($value)
+    {
+        if (str_word_count($value) > $this->size) {
+            return ['The number of words must be less than {size}',
+                ['size' => $this->size]];
+        }
+        return false;
+    }
+    public function clientValidateAttribute($model, $attribute, $view)
+    {
+        $url = Url::toRoute(['validation/check-words']);
+        return <<<JS
+deferred.push($.get("$url", {words:
+value}).done(function(data) {
+if (!data.result) {
+messages.push(data.error);
+}
+}));
+JS;
+    }
+}
+```
+
+
+```
+public function actionCheckWords()
+{
+    \Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+    $value = Yii::$app->getRequest()->get('words');
+    $validator = new WordsValidator([
+        'size' => 10,
+    ]);
+    $result = $validator->validate($value, $error);
+    return ['result' => $result,'error' => $error
+    ];
+}
+```
 
 ### 更多...
 
