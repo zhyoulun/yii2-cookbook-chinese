@@ -536,25 +536,48 @@ public function behaviors()
 - 你面对一个垃圾机器人，它可以从图片中读取文字，你需要添加更多的安全措施
 - 你希望让验证码更加简单和有趣
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+在我们的例子中，我们将会修改Yii的验证码，它要求用户解决一个简单的算术问题，而不只是简单的重复图片中文字的内容。
 
 ### 准备
 
+这个例子一开始，我们会利用*添加和自定义CaptchaWidget*的结果。或者也可以使用其它使用了验证码的表单，因为我们不需要修改很多已有的代码。
+
 ### 如何做...
+
+我们需要自定义`CaptchaAction`，它会生成验证码并将其生成图片。这个验证码应该是一个随机数字，并且图片应该是一个有相同结果的算术表达式：
+
+1. 创建`@app/components/MathCaptchaAction.php`：
+
+```
+<?php
+namespace app\components;
+use \Yii;
+use yii\captcha\CaptchaAction;
+class MathCaptchaAction extends CaptchaAction
+{
+    protected function renderImage($code)
+    {
+        return parent::renderImage($this->getText($code));
+    }
+    protected function generateVerifyCode()
+    {
+        return mt_rand((int)$this->minLength,
+            (int)$this->maxLength);
+    }
+    protected function getText($code)
+    {
+        $code = (int) $code;
+        $rand = mt_rand(1, $code-1);
+        $op = mt_rand(0, 1);
+        if ($op) {
+            return $code - $rand . " + " . $rand;
+        }
+        else {
+            return $code + $rand . " - " . " " . $rand;
+        }
+    }
+}
+```
 
 ### 参考
 
