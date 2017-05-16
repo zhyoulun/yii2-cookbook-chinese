@@ -579,21 +579,195 @@ class MathCaptchaAction extends CaptchaAction
 }
 ```
 
+2. 在我们的控制器`actions`方法中，我们需要将`CaptchaAction`替换成自己的验证码动作，如下：
+
+```
+public function actions()
+{
+    return [
+        'captcha' => [
+            'class' => 'app\components\MathCaptchaAction',
+            'minLength' => 1,
+            'maxLength' => 10,
+        ],
+    ];
+}
+```
+
+3. 运行你的表单，尝试新的验证码。它将会展示一个算术表达式，你需要输入它的答案，如下截图所示：
+
+![](../images/408.png)
+
+我们重写了两个`CaptchaAction`方法，在`generateVerifyCode()`中，我们生成了一个随机数而不是文本。然后我们需要渲染的是一个表达式，而不是文本，我们需要重写`renderImage`。表达式是由我们自定义`getText()`方法生成的。`$minLength`和`$maxLength`属性已经在`CaptchaAction`定义了，所以我们不需要将它们加入到`MathCaptchaAction`类中。
+
 ### 参考
 
+欲了解更多信息，参考如下链接：
+
+- [http://www.yiiframework.com/doc-2.0/yii-captcha-captcha.html](http://www.yiiframework.com/doc-2.0/yii-captcha-captcha.html)
+- [http://www.yiiframework.com/doc-2.0/yii-captcha-captchaaction.html](http://www.yiiframework.com/doc-2.0/yii-captcha-captchaaction.html)
+- 第二章*路由，控制器，视图*中的*使用独立动作*小节
 
 ## 创建一个自定义输入小部件
 
+Yii有一套非常好的表单小部件，但和其它框架一样，Yii并不能涵盖所有。在本小节中，我们将会学习如何创建自己的输入小部件。这里我们将创建一个范围输入小部件。
+
 ### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 
 ### 如何做...
 
+1. 创建一个小组件文件`@app/components/RangeInputWidget.php`：
+
+```
+<?php
+namespace app\components;
+use yii\base\Exception;
+use yii\base\Model;
+use yii\base\Widget;
+use yii\helpers\Html;
+class RangeInputWidget extends Widget
+{
+    public $model;
+    public $attributeFrom;
+    public $attributeTo;
+    public $htmlOptions = [];
+    protected function hasModel()
+    {
+        return $this->model instanceof Model&&
+        $this->attributeFrom !== null&& $this->attributeTo !== null;
+    }
+    public function run()
+    {
+        if (!$this->hasModel()) {
+            throw new Exception('Model must be set');
+        }
+        return Html::activeTextInput($this->model, $this->attributeFrom, $this->htmlOptions) 
+            .' &rarr; ' 
+            .Html::activeTextInput($this->model, $this->attributeTo, $this->htmlOptions);
+    }
+}
+```
+
+2. 创建一个控制器文件`@app/controllers/RangeController.php`：
+
+```
+<?php
+namespace app\controllers;
+use Yii;
+use yii\web\Controller;
+use app\models\RangeForm;
+class RangeController extends Controller
+{
+    public function actionIndex()
+    {
+        $model = new RangeForm();
+        if ($model->load(Yii::$app->request->post()) &&
+            $model->validate()) {
+            Yii::$app->session->setFlash('rangeFormSubmitted',
+                'The form was successfully processed!'
+            );
+        }
+        return $this->render('index', array(
+            'model' => $model,
+        ));
+    }
+}
+```
+
+3. 创建一个表单文件`@app/models/RangeForm.php`：
+
+```
+<?php
+namespace app\models;
+use yii\base\Model;
+class RangeForm extends Model
+{
+    public $from;
+    public $to;
+    public function rules()
+    {
+        return [
+            [['from', 'to'], 'number', 'integerOnly' => true],
+            ['from', 'compare', 'compareAttribute' => 'to',
+                'operator' => '<='],
+        ];
+    }
+}
+```
+
+4. 创建一个视图文件`@app/views/range/index.php`：
+
+```
+<?php
+use yii\helpers\Html;
+use yii\bootstrap\ActiveForm;
+use app\components\RangeInputWidget;
+?>
+
+<h1>Range form</h1>
+<?php if (Yii::$app->session->hasFlash('rangeFormSubmitted')):
+    ?>
+    <div class="alert alert-success">
+        <?= Yii::$app->session->getFlash('rangeFormSubmitted');
+        ?>
+    </div>
+<?php endif?>
+<?= Html::errorSummary($model, ['class'=>'alert alert-danger'])?>
+<?php $form = ActiveForm::begin([
+    'options' => [
+        'class' => 'form-inline'
+    ]
+]); ?>
+<div class="form-group">
+    <?= RangeInputWidget::widget([
+        'model' => $model,
+        'attributeFrom' => 'from',
+        'attributeTo' => 'to',
+        'htmlOptions' => [
+            'class' =>'form-control'
+        ]
+    ]) ?>
+</div>
+<?= Html::submitButton('Submit', ['class' => 'btn btn-primary', 'name' => 'contact-button']) ?>
+<?php ActiveForm::end(); ?>
+
+```
+
+5. 打开网页`index.php?r=range`运行`range`控制器：
+
+![](../images/409.png)
+
+6. 第一个文本输入字段输入200，第二个输入300：
+
+![](../images/410.png)
+
+7. 如果第一个值比第二个值大，小部件会输出一个错误。尝试输入正确的值，分别输入100和200：
+
+![](../images/411.png)
+
 ### 工作原理...
+
+范围输入小部件需要如下四个参数：
+
+- `model`：如果没有设置，会抛出一个异常
+- `attributeFrom`：用于设置范围的最小值
+- `attributeTo`：用于设置范围的最大值
+- `htmlOptions`：会被传递给每一个输入
+
+这个小部件用在表单验证，被用于检查第一个值是否小于等于第二个值。
 
 ### 更多...
 
+Yii2框架有一个官方Twitter Bootstrap扩展，它提供了一系列Twitter Bootstrap小部件的封装。在你使用自己的小部件时，检查有否有Bootstrap可用[http://www.yiiframework.com/doc-2.0/extbootstrap-index.html](http://www.yiiframework.com/doc-2.0/extbootstrap-index.html)。
+
 ### 参考
 
+欲了解更多关于小部件的信息，可以使用如下资源：
+
+- [http://www.yiiframework.com/doc-2.0/yii-base-widget.html](http://www.yiiframework.com/doc-2.0/yii-base-widget.html)
+- [https://github.com/yiisoft/yii2-bootstrap/blob/master/docs/guide/usage-widgets.md](https://github.com/yiisoft/yii2-bootstrap/blob/master/docs/guide/usage-widgets.md)
 
 ## Tabular输入
 
@@ -669,13 +843,9 @@ class MathCaptchaAction extends CaptchaAction
 
 
 
-![](../images/408.png)
 
-![](../images/409.png)
 
-![](../images/410.png)
 
-![](../images/411.png)
 
 ![](../images/412.png)
 
