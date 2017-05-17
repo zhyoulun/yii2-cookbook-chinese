@@ -1048,7 +1048,20 @@ use yii\helpers\Html;
 
 ## 带有多个模型的复杂表单
 
+当处理一些复杂数据时，你可能需要使用多个不同的模型来搜集用户的输入。例如，你有一个订单表单，有用户的信息，例如姓、名、电话号码；你也需要一个递送地址和一些产品。
+
+你希望在一个表单中保存所有的数据。使用Yii2模型和表单，你可以很容易的这道它。假设用户信息被存放在用户表中，并且在订单表单中，我们将会保存产品信息和买家用户的`user_id`。此外我们还有一个产品表，存储了一些产品信息。
+
 ### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 使用如下命令为用户表、产品表和订单表创建migration：
+
+```
+./yii migrate/create create_order_tables
+```
+
+3. 修改新创建的migrations的`up()`和`down()`方法：
 
 ```
 <?php
@@ -1099,14 +1112,17 @@ class m150813_161817_create_order_form_tables extends Migration
 }
 ```
 
-
+4. 使用如下命令安装migration：
 
 ```
 ./yii migrate/up
 ```
 
+5. 使用Gii生成用户、订单和产品模型。
+
 ### 如何做...
 
+1. 创建`@app/controller/TestController.php`：
 
 ```
 <?php
@@ -1146,6 +1162,7 @@ class TestController extends Controller
 }
 ```
 
+2. 创建一个视图文件`@app/views/test/order.php`：
 
 ```
 <?php
@@ -1172,16 +1189,30 @@ $form = ActiveForm::begin([
 
 ### 工作原理...
 
+访问`http://yii-book.app/index.php?r=test/order`你可以看到这个表单。我们的表单从用户和订单模型中搜集信息。
+
+首先填写表单：
+
 ![](../images/415.png)
+
+保存以后，你将会看到如下结果：
 
 ![](../images/416.png)
 
+在这个控制器中，我们进行和验证和存储。当然，这个例子很简单，在实际的项目中，你可能需要处理不止一个模型，使用这种方法，你就能解决这个问题。当你希望在同一个表单中创建或者更新不止一个实例时，这种方法非常有用。
+
 ### 参考
 
+欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/guide-input-multiplemodels.html](http://www.yiiframework.com/doc-2.0/guide-input-multiplemodels.html)
 
 ## 依赖AJAX的下拉列表
 
+通常，你会需要一个带有两个下拉列表的表单，一个表单的值依赖于另外一个。使用Yii内置的AJAX功能，你可以创建这样一个下拉列表。
+
 ### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 创建`@app/model/Product.php`：
 
 
 ```
@@ -1210,6 +1241,8 @@ class Product extends ActiveRecord
         ]; }
 }
 ```
+
+3. 创建`@app/models/Category.php`模型：
 
 ```
 <?php
@@ -1240,11 +1273,13 @@ class Category extends ActiveRecord
 }
 ```
 
+4. 创建`create_category_and_product_tables` migration：
 
 ```
 ./yii migrate/create create_category_and_product_tables
 ```
 
+5. 更新刚刚创建的migration方法：
 
 ```
 <?php
@@ -1294,6 +1329,7 @@ class m150813_005030_create_categories extends Migration
 
 ### 如何做...
 
+1. 创建控制器文件，`@app/controllers/DropdownController.php`：
 
 ```
 <?php
@@ -1331,6 +1367,7 @@ class DropdownController extends Controller
 }
 ```
 
+2. 创建视图文件`@app/views/dropdown/index.php`：
 
 ```
 <?php
@@ -1391,16 +1428,19 @@ window.categoryOnChange = categoryOnChange;
 <?php ActiveForm::end(); ?>
 ```
 
-
+3. 打开`index.php?r=dropdown`运行`dropdown`控制器，然后添加一个新的产品，`Canon - EOS Rebel T6i DSLR`：
 
 ![](../images/417.png)
 
+4. 正如你所见到的，`Category`输入框有三个选项。选择**Photo**选项，然后第二个输入选择将会有两个更多的选项：
+
 ![](../images/418.png)
 
+5. 如果你选择了另外一个分类。你将会得到这个分类的子分类。
 
 ### 工作原理...
 
-
+在这个例子中，我们有两个依赖的列表，
 
 ## AJAX校验器
 
