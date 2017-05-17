@@ -1440,14 +1440,19 @@ window.categoryOnChange = categoryOnChange;
 
 ### 工作原理...
 
-在这个例子中，我们有两个依赖的列表，
+在这个例子中，我们有两个依赖的列表，分类和子分类，以及一个模型`Category`。主要的思想比较简单：我们将JQuery的`onChange`事件绑定到表单的`category_id`字段上。每次当用户修改字段时，我们的应用会发送一个AJAX请求到`get-sub-categories`动作上。这个动作返回一个JSON格式的子分类列表，然后在客户端，将子列表进行渲染。
 
 ## AJAX校验器
 
+有些校验只能在服务端进行，因为只有服务端有必要的信息。例如，为了验证公司的名称或者用户电子邮箱是唯一的，我们需要检查服务端相应的表格。在这个例子中，你应该使用内置AJAX校验器。Yii2支持AJAX表单验证，它本质上是将表单值发送到服务端进行验证，然后返回验证错误信息，而不离开页面。这个过程会在你每次离开或者修改字段时进行。
+
 ### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 
 ### 如何做...
 
+1. 在基础应用模板中，我们有一个简单的联系表单。你可以在这个页面`http://yii-book.app/index.php?r=site/contact`中看到。打开并修改相关的视图表单，`@app/views/site/contact.php`。为了激活表单的AJAX校验，在`form`配置中设置`enableAjaxValidation`选项为`true`：
 
 ```
 $form = ActiveForm::begin([
@@ -1456,6 +1461,7 @@ $form = ActiveForm::begin([
 ]);
 ```
 
+2. 同时你需要在服务端添加接口处理AJAX校验。这段代码只是检查当前请求是否是AJAX以及是否为`POST`请求，如果是的话，我们会收到JSON格式的错误：
 
 ```
 if (Yii::$app->request->isAjax &&
@@ -1465,6 +1471,7 @@ $model->load(Yii::$app->request->post())) {
 }
 ```
 
+3. 修改`SiteController`中的`actionContact()`：
 
 ```
 <?php
@@ -1489,18 +1496,29 @@ public function actionContact()
 
 ### 工作原理...
 
+先前的代码将会检查当前请求是否是AJAX。如果是的话，就会响应这个请求，运行校验以及返回JSON格式的错误。
+
+你可以在服务端的调试面板中检查服务端的响应。尝试提交一个空表单然后你就会看到这个响应。
+
+例如，在Google Chrome浏览器中，点击F12并选择开发工具条中的**Network**，你将会看到带有错误和消息的JSON数组：
 
 ![](../images/419.png)
 
 ### 参考
 
+[http://www.yiiframework.com/doc-2.0/guide-input-validation.html#ajaxvalidation](http://www.yiiframework.com/doc-2.0/guide-input-validation.html#ajaxvalidation)
 
 ## 创建一个自定义客户端的校验器
 
+在*自定义校验器*小节中，我们创建了一个独立的校验器。在本小节中，我们将会修改一个校验器来创建额外的客户端校验，它也会检查单词的数量。
+
 ### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 
 ### 如何做...
 
+1. 创建`@app/components/WordsValidator.php`：
 
 ```
 <?php
@@ -1529,6 +1547,7 @@ JS;
 }
 ```
 
+2. 创建`@app/models/Article.php`：
 
 ```
 <?php
@@ -1548,6 +1567,7 @@ class Article extends Model
 }
 ```
 
+3. 创建`@app/controllers/ValidationController.php`：
 
 ```
 <?php
@@ -1571,6 +1591,8 @@ class ValidationController extends Controller
 }
 ```
 
+4. 创建`@app/views/validation/index.php`：
+
 ```
 <?php
 use yii\bootstrap\ActiveForm;
@@ -1588,15 +1610,17 @@ use yii\helpers\Html;
 <?php ActiveForm::end(); ?>
 ```
 
-
-
-
 ### 工作原理...
 
+打开`index.php?r=validation`运行校验控制器。如果你输入了超过10个单词，你将会看到一个错误：
 
 ![](../images/420.png)
 
+如果输入的少于10个单词，客户端校验是成功的：
+
 ![](../images/421.png)
+
+首先，我们创建了`@app/componets/WordsValidator.php`，它继承了`@yii\validators\Validator`类，添加新创建的校验器到`Article`模型的标题属性：
 
 ```
 ..
@@ -1604,6 +1628,15 @@ use yii\helpers\Html;
 ..
 ```
 
+在我们的校验器内部，我们已经定义了两个特殊的方法：`validatorValue()`和`clientValidatorAttribute()`。
+
+我们的校验器类实现了`validatorValue()`方法来支持数据模型之外的数据校验。第二个方法只是返回客户端需要的JavaScript。
+
+### 更多...
+
+如果我们希望隐藏校验器实现，或者希望控制所有的校验过程在服务端，我们可以创建一个`Deferred`对象。
+
+首先，修改`WordsValidator`校验器：
 
 ```
 <?php
@@ -1637,6 +1670,9 @@ JS;
 }
 ```
 
+在先前的代码中，deferred变量由Yii提供，它是`Deferred`对象组成的一个数组，`$.get()`JQuery方法创建一个`Deferred`对象，它被放入了`deferred`数组中。
+
+第二，添加`checkWords`动作到`validation`控制器中：
 
 ```
 public function actionCheckWords()
@@ -1652,23 +1688,9 @@ public function actionCheckWords()
 }
 ```
 
-### 更多...
-
 ### 参考
 
+欲了解更多信息，参考如下地址：
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- [http://www.yiiframework.com/doc-2.0/guide-input-validation.html#implementing-client-sidevalidation](http://www.yiiframework.com/doc-2.0/guide-input-validation.html#implementing-client-sidevalidation)
+- [http://www.yiiframework.com/doc-2.0/guide-input-validation.html#deferred-validation](http://www.yiiframework.com/doc-2.0/guide-input-validation.html#deferred-validation)
