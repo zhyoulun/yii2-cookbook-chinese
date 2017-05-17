@@ -771,12 +771,20 @@ Yii2框架有一个官方Twitter Bootstrap扩展，它提供了一系列Twitter 
 
 ## Tabular输入
 
+在本小节中，我们将会想你展示如何使用一个模型保存和验证相关的模型。有时候你需要在一个表单中处理多个相同种类的模型。
+
+例如，我们有竞赛和为竞赛准备的奖牌。任何一个竞赛可能包含没有限制个的奖牌。所以，我们需要能够创建有多个奖牌的竞赛，进行验证，展示错误，保存主模型（竞赛模型）和所有相关模型（多个奖牌模型）到数据库。
+
 ### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 使用如下命令为竞赛和奖牌表创建migrations：
 
 ```
 ./yii migrate/create create_table_contest_and_prize_table
 ```
 
+更新刚刚创建的migrations的方法`up()`和`down()`：
 
 ```
 public function up()
@@ -813,13 +821,17 @@ public function down()
 }
 ```
 
+3. 然后，使用如下命令进行安装：
 
 ```
 ./yii migrate/up
 ```
 
+4. 使用Gii创建竞赛、奖牌和`ContestPrizeAssn`模型。
+
 ### 如何做...
 
+1. 创建`@app/controllers/ContestController.php`：
 
 ```
 <?php
@@ -882,6 +894,7 @@ class ContestController extends Controller
 }
 ```
 
+2. 创建`@app/views/contest/update.php`：
 
 ```
 <?php
@@ -889,31 +902,58 @@ use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 $form = ActiveForm::begin();
 foreach ($prizes as $i => $prize) {
-    echo $form->field($prize,
-        "[$i]amount")->label($prize->name);
+    echo $form->field($prize, "[$i]amount")->label($prize->name);
 }
 echo Html::submitButton('submit' , ['class' => 'btn btn-success']);
 ActiveForm::end();
 ```
 
-
-
 ### 工作原理...
 
+以下信息展示了如何应用tabular到Yii中。
+
+在`contest/update`动作中，我们会展示所有的奖牌并同时进行编辑。我们使用了两个特殊的Yii方法：
+
+- `Model::loadMultiple()`：这个方法使用终端用户的数据填充了多个模型
+- `Model::vilidateMultiple()`：这个方法同时验证了多个模型
+
+因为我们已经使用了`vilidateMultiple()`验证了所有的模型，我们给`save()`传递`false`参数来避免再次校验。
+
+首先，访问`/index.php?r=contest/create`页面，访问过以后，这个页面将会验证并创建带有两个奖牌的'Happy New Year'，并将奖牌传递给当前竞赛模型。你应该注意到只有当合法时，我们才会保存竞赛模型和奖牌：
+
+![](../images/412.png)
+
+它是通过如下条件提供的：
 
 ```
 if ($contest->validate() && Model::validateMultiple($prizes)) { ...}
 ```
 
+访问`/index.php?r=contest/update`：
+
+![](../images/413.png)
+
+在`@app/views/contest/update.php`中，对于每一个奖牌，我们渲染了一个名称和一个输入框。我们必须给每一个输入框添加一个序号，这样`Model::loadMultiple()`才能识别出每个输入框对应着哪个模型。
+
+综上，这个方法被用于搜集tabular输入数据：你需要在一个视图的表单中，同时搜集一个父模型和多个相关模型的数据。
+
 ### 参考
 
+欲了解更多信息，参考如下地址：
+
+- [http://www.yiiframework.com/doc-2.0/guide-input-tabular-input.html#collecting-tabular-input](http://www.yiiframework.com/doc-2.0/guide-input-tabular-input.html#collecting-tabular-input)
 
 ## 条件校验器
 
+有些情况下，需要启用或者禁用模型的指定验证规则。Yii2提供了一个机制来帮你做到这一点。
+
 ### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 
 ### 如何做...
 
+1. 创建一个表单文件`@app/models/DeliveryForm.php`：
 
 ```
 <?php
@@ -930,12 +970,11 @@ class DeliveryForm extends Model
     {
         return [
             ['type', 'required'],
-            ['type', 'in', 'range'=>[self::TYPE_PICKUP,
-                self::TYPE_COURIER]],
+            ['type', 'in', 'range'=>[self::TYPE_PICKUP, self::TYPE_COURIER]],
             ['address', 'required', 'when' => function ($model)
             {
                 return $model->type == self::TYPE_COURIER;
-            }, 'whenClient' => "function (attribute, value) {return $('#deliveryform-type').val() =='".self::TYPE_COURIER."';}"]
+            }, 'whenClient' => "function (attribute, value) {return $('#deliveryform-type').val()=='".self::TYPE_COURIER."';}"]
         ];
     }
     public function typeList()
@@ -948,6 +987,7 @@ class DeliveryForm extends Model
 }
 ```
 
+2. 创建一个控制器文件`@app/controllers/ValidationController.php`：
 
 ```
 <?php
@@ -960,8 +1000,7 @@ class ValidationController extends Controller
     public function actionIndex()
     {
         $model = new DeliveryForm();
-        if ($model->load(Yii::$app->request->post()) &&
-            $model->validate()) {
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
             Yii::$app->session->setFlash('success',
                 'The form was successfully processed!'
             );
@@ -973,7 +1012,7 @@ class ValidationController extends Controller
 }
 ```
 
-
+3. 创建一个视图文件`@app/views/validation/index.php`：
 
 ```
 <?php
@@ -993,11 +1032,19 @@ use yii\helpers\Html;
 <?php ActiveForm::end(); ?>
 ```
 
+4. 运行`validation`控制器`index.php?r=validation`，选择`courier delivery`:
+
+![](../images/414.png)
 
 ### 工作原理...
 
+当`type`属性被设置为`DeliveryForm::TYPE_COURIER`时，`DeliveryForm address`属性是必需的；否则是可选的。
+
+此外，为了支持客户端条件验证，我们配置了`whenClient`属性，它使用了一个Javascript函数来决定是否应用这个规则。
+
 ### 参考
 
+欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/guideinputvalidation.html#conditional-validation](http://www.yiiframework.com/doc-2.0/guideinputvalidation.html#conditional-validation)
 
 ## 带有多个模型的复杂表单
 
@@ -1124,6 +1171,10 @@ $form = ActiveForm::begin([
 ```
 
 ### 工作原理...
+
+![](../images/415.png)
+
+![](../images/416.png)
 
 ### 参考
 
@@ -1340,6 +1391,13 @@ window.categoryOnChange = categoryOnChange;
 <?php ActiveForm::end(); ?>
 ```
 
+
+
+![](../images/417.png)
+
+![](../images/418.png)
+
+
 ### 工作原理...
 
 
@@ -1390,6 +1448,9 @@ public function actionContact()
 ```
 
 ### 工作原理...
+
+
+![](../images/419.png)
 
 ### 参考
 
@@ -1493,6 +1554,10 @@ use yii\helpers\Html;
 ### 工作原理...
 
 
+![](../images/420.png)
+
+![](../images/421.png)
+
 ```
 ..
 ['title', WordsValidator::className(), 'size' => 10],
@@ -1563,22 +1628,7 @@ public function actionCheckWords()
 
 
 
-![](../images/412.png)
 
-![](../images/413.png)
 
-![](../images/414.png)
 
-![](../images/415.png)
 
-![](../images/416.png)
-
-![](../images/417.png)
-
-![](../images/418.png)
-
-![](../images/419.png)
-
-![](../images/420.png)
-
-![](../images/421.png)
