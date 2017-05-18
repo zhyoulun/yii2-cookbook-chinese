@@ -482,13 +482,156 @@ public function behaviors()
 
 缺省情况下，Yii不会拒绝任何事情，所以如果你需要最大程度的安全，考虑添加`['allow' => false]`到规则的末尾。
 
-在我们的规则中，我们使用了两个参数。第一个是动作参数，
+在我们的规则中，我们使用了两个参数。第一个是动作参数，它指定的该规则会应用在哪些动作上。第二个参数时角色参数，它指定了该规则会应用于哪些角色上。
+
+Yii2内置访问控制默认只支持两个角色：游客（未登录），用符号`?`指定，登录的用户，用服务`@`指定。
+
+使用简单的访问控制，我们可以基于用户的登录状态限制对指定页面的访问。如果用户在未登录状态下访问这些页面，Yii会将他们重定向到登录页面。
+
+规则会一个接一个执行，从第一个开始，直到能匹配上一个。如果没有一个能匹配，那么该访问被认为是允许的。
+
+下一个任务是限制指定IP的访问。在这个例子中，涉及如下两个访问规则：
+
+```
+[
+    'allow' => true,
+    'actions' => ['ip'],
+    'ips' => ['127.0.0.1'],
+],
+```
+
+第一个规则允许指定IP列表中的IP访问。在我们的例子中，我们使用了一个回路地址，它指向我们自己的电脑。尝试将其修改为`127.0.0.2`，看看当IP地址不匹配时是什么表现。第二个规则是拒绝所以，包括其它所有IP。
+
+接下来，我们只允许指定用户角色访问：
+
+```
+[
+    'allow' => true,
+    'actions' => ['user'],
+    'roles' => [ User::ROLE_ADMIN],
+],
+```
+
+上边的规则允许`admin`角色的用户访问user动作，因此，如果你以`admin`登录，你将可以访问，但如果你以`demo`登录，将会被拒绝。
 
 ![](../images/503.png)
 
+我们重写了标准`AccessRule`类，存放在`components/AccessRule.php`。在我们的`AccessRule`类内部，我们重写了`matchRole`方法，在这我们获取并检查了当前用户的角色，并使用我们的规则进行匹配。
+
+最后，我们需要拒绝指定浏览器的访问。在本小节中，我们只拒绝IE 9的访问。这个规则被放在了首位，所以它首先会执行：
+
+```
+[
+    'all`ow' => true,
+    'actions' => ['user'],
+    'matchCallback' => function ($rule, $action) {
+        return preg_match('/MSIE 9/',$_SERVER['HTTP_USER_AGENT'])!==false;
+    }`
+],
+```
+
+我们使用的这个检测技术是不可靠的，因为MSIE在其它很多用户代理中都会包含。想了解用户代理字符串的列表，可以参考`http://www.useragentstring.com/`。
+
+在上边的代码中，我们使用了另外一个过滤规则属性，名叫`matchCallback`。这个属性表明只有当函数中的属性返回`true`时规则会生效。
+
+我们的函数检查用户代理字符串是否包含MSIE 9.0字符串。你可以根据自己的需求，指定任何PHP代码。
+
+### 参考
+
+为了了解更多有关访问控制和过滤器的信息，参考如下地址：
+
+- [http://www.yiiframework.com/doc-2.0/guide-structure-filters.html](http://www.yiiframework.com/doc-2.0/guide-structure-filters.html)
+- [http://www.yiiframework.com/doc-2.0/yii-filters-accesscontrol.html](http://www.yiiframework.com/doc-2.0/yii-filters-accesscontrol.html)
+- [http://www.yiiframework.com/doc-2.0/yii-filters-accessrule.html](http://www.yiiframework.com/doc-2.0/yii-filters-accessrule.html)
+- [https://github.com/yiisoft/yii2/blob/master/docs/guide/structure-filters.md](https://github.com/yiisoft/yii2/blob/master/docs/guide/structure-filters.md)
+- [http://www.yiiframework.com/doc-2.0/guide-security-authorization.html#access-control-filter](http://www.yiiframework.com/doc-2.0/guide-security-authorization.html#access-control-filter)
+- `使用RBAC`小节
+
+## 防止XSS
+
+XSS代表跨站脚本，它允许注入一个客户端的脚本（通常是JavaScript）到被用户观看的网页。考虑客户端脚本的能力，这会导致非常严重的后果，比如绕过安全检查、获取其它用户的身份或者数据泄露。
+
+在本小节中，我们将会看到如何使用`\yii\helpers\Html`和`\yii\helpers\HtmlPurifier`来转义输出从而防止XSS。
+
+### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 创建`controllers/XssController.php`：
+
+```
+<?php
+namespace app\controllers;
+use Yii;
+use yii\helpers\Html;
+use yii\web\Controller;
+/**
+ * Class SiteController.
+ * @package app\controllers
+ */
+class XssController extends Controller
+{
+    /**
+     * @return string
+     */
+    public function actionIndex()
+    {
+        $username = Yii::$app->request->get('username', 'nobody');
+        return $this->renderContent(Html::tag('h1',
+            'Hello, ' . $username . '!'
+        ));
+    }
+}
+```
+
+3. 通常情况下，他会被使用为`/xss/simple?username=Administrator`。然而，因为没有考虑安全准则*过滤输入，转移输出*，恶意的用户能够使用如下方式使用它：
+
+```
+/xss/simple?username=<script>alert('XSS');</script>
+```
+
+4. 上边的代码将会导致一个脚本注入，如下截图所示：
+
 ![](../images/504.png)
 
+### 如何做...
+
+执行如下步骤：
+
+1. 为了防止上边屏幕截图中的XSS警报，我们需要将其传给浏览器之前进行转义。方法如下：
+
+```
+<?php
+namespace app\controllers;
+use Yii;
+use yii\helpers\Html;
+use yii\web\Controller;
+/**
+ * Class SiteController.
+ * @package app\controllers
+ */
+class XssController extends Controller
+{
+    /**
+     * @return string
+     */
+    public function actionIndex()
+    {
+        $username = Yii::$app->request->get('username', 'nobody');
+        return $this->renderContent(Html::tag('h1', Html::encode('Hello, ' . $username . '!')));
+    }
+}
+```
+
+2. 现在你就不会看到警告了，而是得到正确的转义的HTML，截图如下所示：
+
 ![](../images/505.png)
+
+3. 因此，基本的规则是，转义所有动态的数据。例如，我们应该为名字链接做同样的转义：
+
+```
+use \yii\helpers\Html;
+echo Html::a(Html::encode($_GET['username']), array());
+```
 
 ![](../images/506.png)
 
