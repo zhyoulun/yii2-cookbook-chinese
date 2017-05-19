@@ -633,7 +633,303 @@ use \yii\helpers\Html;
 echo Html::a(Html::encode($_GET['username']), array());
 ```
 
+完成了。你的页面能防止XSS。如果我们希望一些HTML能通过怎么办？我们不能再使用`\yii\helpers\Html::encode`，因为它会将HTML输出为代码，而我们需要是的是实际的表示。幸运的是，Yii有一个工具，它能让你过滤恶意的HTML。这个工具名叫`HTML Purifier`，使用方法如下：
+
+```
+<?php
+namespace app\controllers;
+use Yii;
+use yii\helpers\Html;
+use yii\helpers\HtmlPurifier;
+use yii\web\Controller;
+/**
+ * Class SiteController.
+ * @package app\controllers
+ */
+class XssController extends Controller
+{
+    /**
+     * @return string
+     */
+    public function actionIndex()
+    {
+        $username = Yii::$app->request->get('username', 'nobody');
+        $content = Html::tag('h1', 'Hello, ' . $username . '!');
+        return $this->renderContent(
+            HtmlPurifier::process($content)
+        );
+    }
+}
+```
+
+现在如果我们使用如下地址访问`/xss/index?username=<i>username</i>!<script>alert('XSS')</script>`，HTML净化器会移除恶意的部分，我们将会得到如下结果：
+
 ![](../images/506.png)
+
+### 工作原理
+
+1. 深入底层看，`\yii\helpers\Html::encode`类似如下所示：
+
+```
+public static function encode($content, $doubleEncode = true)
+{
+    return htmlspecialchars($content, ENT_QUOTES | ENT_SUBSTITUTE, 
+        Yii::$app ? Yii::$app->charset : 'UTF-8',
+        $doubleEncode);
+}
+```
+
+2. 所以本质上是用PHP的`htmlspecialchars`函数，只要第三个参数能正确传递，这个函数非常安全。
+
+`\yii\helpers\HtmlPurifier`使用HTML净化库，这是解决HTML中XSS最先进的解决方案。我们使用了它的默认配置，这对绝大部分用户输入的内容都是有效的。
+
+### 更多...
+
+关于XSS和HTML净化器需要多了解一些东西。接下来的部分就会讨论。
+
+#### XSS类型
+
+XSS注入有两个主要的类型，如下：
+
+- 非持久
+- 持久
+
+第一种类型是本小节中最常用的XSS类型；在大部分不安全的web应用中都可以发现。用户传递的数据不会被存储，所以注入脚本只有当用户输入的时候才会执行。但是，这看上去仍然不安全。恶意的用户可以将XSS放在一个链接中，然后放在别的网站上；当其它用户点击访问时，就会发生XSS注入。
+
+第二种情况更验证，因为由恶意用户输入的数据被存储在了数据库中，并被展示给了很多网络用户。使用这种类型的XSS，恶意用户甚至可以通过命令，使其它用户删除他们能访问的数据，摧毁你的网站。
+
+### 参考
+
+欲了解更多关于XSS以及如何处理它，参考如下资源：
+
+- [http://htmlpurifier.org/docs](http://htmlpurifier.org/docs)
+- [http://ha.ckers.org/xss.html](http://ha.ckers.org/xss.html)
+- [http://shiflett.org/blog/2007/may/character-encoding-and-xss](http://shiflett.org/blog/2007/may/character-encoding-and-xss)
+
+## 防止SQL注入
+
+SQL注入是一种代码注入，它利用了数据库层的易损性，允许你执行任意SQL，允许恶意用户删除数据或者提升自己的权限。
+
+在本小节中，我们将会看到易损代码的例子，以及如何修复他们。
+
+### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 执行如下SQL：
+
+```
+DROP TABLE IF EXISTS `user`;
+CREATE TABLE `user` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `username` varchar(100) NOT NULL,
+  `password` varchar(32) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+INSERT INTO `user`(`id`,`username`,`password`) VALUES ('1','Alex','202cb962ac59075b964b07152d234b70');
+INSERT INTO `user`(`id`,`username`,`password`) VALUES ('2','Qiang','202cb962ac59075b964b07152d234b70');
+```
+
+3. 使用Gii生成`User`模型。
+
+### 如何做...
+
+1. 首先，我们将会实现一个简单的动作，检查通过URL传递过来的用户名和密码是否是正确的。创建`app/controllers/SqlController.php`：
+
+```
+<?php
+namespace app\controllers;
+use app\models\User;
+use Yii;
+use yii\base\Controller;
+use yii\base\Exception;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Html;
+/**
+ * Class SqlController.
+ * @package app\controllers
+ */
+class SqlController extends Controller
+{
+    protected function renderContentByResult($result)
+    {
+        if ($result) {
+            $content = "Success";
+        } else {
+            $content = "Failure";
+        }
+        return $this->renderContent($content);
+    }
+    public function actionSimple()
+    {
+        $userName = Yii::$app->request->get('username');
+        $password = Yii::$app->request->get('password');
+        $passwordHash = md5($password);
+        $sql = "SELECT * FROM `user`"
+            ." WHERE `username` = '".$userName."'"
+            ." AND password = '".$passwordHash."' LIMIT |1";
+        $result = Yii::$app->db->createCommand($sql)->queryOne();
+        return $this->renderContentByResult($result);
+    }
+}
+```
+
+2. 访问`/sql/simple?username=test&password=test`。因为我们不知道两组用户名和密码，正如所预料的，会打印失败。
+3. 现在尝试访问`/sql/simple?username=%27+or+%271%27%3D%271%27%3B+--&password=whatever`。这一次，它让我们通过了，尽管实际上我们并不知道真正的身份。解压的部分`username`的值如下所示：
+
+```
+' or '1'='1'; --
+```
+
+4. 关闭quote，从而语法是正确的。添加`OR '1'='1'`，它使得条件永远是正确的。使用`; --`来结束查询并注释剩余的部分。
+5. 因为没有做转义，整个查询语句是：
+
+```
+SELECT * FROM user WHERE username = '' or '1'='1'; --' AND password = '008c5926ca861023c1d2a36653fd88e2' LIMIT 1;
+```
+
+6. 修复这个问题最好的方法是使用prepared statement，如下所示：
+
+```
+public function actionPrepared()
+{
+    $userName = Yii::$app->request->get('username');
+    $password = Yii::$app->request->get('password');
+    $passwordHash = md5($password);
+    $sql = "SELECT * FROM `user`"
+        ." WHERE `username` = :username"
+        ." AND password = :password LIMIT 1";
+    $command = Yii::$app->db->createCommand($sql);
+    $command->bindValue(':username', $userName);
+    $command->bindValue(':password', $passwordHash);
+    $result = $command->queryOne();
+    return $this->renderContentByResult($result);
+}
+```
+
+7. 现在使用相同的恶意参数检查`/sql/prepared`。这一次是正常的并且收到了失败的消息。相同的准则被应用到了ActiveRecord上。唯一的不同是AR使用了其它语法：
+
+```
+public function actionAr()
+{
+    $userName = Yii::$app->request->get('username');
+    $password = Yii::$app->request->get('password');
+    $passwordHash = md5($password);
+    $result = User::findOne([
+        'username' => $userName,
+        'password' => $passwordHash
+    ]);
+    return $this->renderContentByResult($result);
+}
+```
+
+8. 在先前的代码中，我们以键值对的样式使用了`username`和`password`参数。先前的代码我们只使用了第一个参数，这会很容易受到攻击：
+
+```
+public function actionWrongAr()
+{
+    $userName = Yii::$app->request->get('username');
+    $password = Yii::$app->request->get('password');
+    $passwordHash = md5($password);
+    $condition = "`username` = '".$userName." AND `password` ='".$passwordHash."'";
+    $result = User::find()->where($condition)->one();
+    return $this->renderContentByResult($result);
+}
+```
+
+9. 如果正确使用，prepared statement可以防止所有类型的SQL注入。但是，这里还会有一些常见的问题：
+
+- 你可以为一个参数绑定一个值，所以，如果你希望查询`WHERE IN (1,2,3,4)`，你必须创建和绑定4个参数。
+- prepared statement不能用于表名，列名，以及其它关键词。
+
+10. 当使用`ActiveRecord`时，通过添加`where`可以解决第一个问题：
+
+```
+public function actionIn()
+{
+    $names = ['Alex', 'Qiang'];
+    $users = User::find()->where(['username' => $names])->all();
+    return $this->renderContent(Html::ul(
+        ArrayHelper::getColumn($users, 'username')
+    ));
+}
+```
+
+11. 第二个问题有多种解决方法。第一种方法是依赖active record和PDO quoting：
+
+```
+public function actionColumn()
+{
+    $attr = Yii::$app->request->get('attr');
+    $value = Yii::$app->request->get('value');
+    $users = User::find()->where([$attr => $value])->all();
+    return $this->renderContent(Html::ul(
+        ArrayHelper::getColumn($users, 'username')
+    ));
+}
+```
+
+12. 但是最安全的方法是使用白名单：
+
+```
+public function actionWhiteList()
+{
+    $attr = Yii::$app->request->get('attr');
+    $value = Yii::$app->request->get('value');
+    $allowedAttr = ['username', 'id'];
+    if (!in_array($attr, $allowedAttr)) {
+        throw new Exception("Attribute specified is not allowed.");
+    }
+    $users = User::find()->where([$attr => $value])->all();
+    return $this->renderContent(Html::ul(
+        ArrayHelper::getColumn($users, 'username')
+    ));
+}
+```
+
+### 工作原理...
+
+防止SQL注入时，主要的目标是正确过滤输入。在所有的情况下，除了表名，我们使用了prepared statements——大多数关系数据库都支持的特性。他们允许你创建一次statement，然后多次使用，他们提供了安全的方法来绑定参数。
+
+在Yii中，你可以为Active Record和DAO使用prepared statement。当使用DAO时，可以使用`bindValue`和`bindParam`来达到目的。当我们希望执行多个同类型但值不同的查询时，非常有用。
+
+```
+public function actionBind()
+{
+    $userName = 'Alex';
+    $passwordHash = md5('password1');
+    $sql = "INSERT INTO `user` (`username`, `password`) VALUES (:username, :password);";
+    // insert first user
+    $command = Yii::$app->db->createCommand($sql);
+    $command->bindParam('username', $userName);
+    $command->bindParam('password', $passwordHash);
+    $command->execute();
+    // insert second user
+    $userName = 'Qiang';
+    $passwordHash = md5('password2');
+    $command->execute();
+    return $this->renderContent(Html::ul(
+        ArrayHelper::getColumn(User::find()->all(), 'username')
+    ));
+}
+```
+
+大部分Active Record方法接受参数。安全起见，你应该使用他们，而不是将原始数据传进去。
+
+至于quoting表名，列和其它关键词，你可以依赖Active Record，或者使用白名单方法。
+
+### 参考
+
+欲了解更多关于SQL注入，以及使用Yii配合数据库工作，参考如下地址：
+
+- [http://www.slideshare.net/billkarwin/sql-injection-myths-and-fallacies](http://www.slideshare.net/billkarwin/sql-injection-myths-and-fallacies)
+- [http://www.yiiframework.com/doc-2.0/yii-db-connection.html](http://www.yiiframework.com/doc-2.0/yii-db-connection.html)
+- [http://www.yiiframework.com/doc-2.0/yii-db-command.html](http://www.yiiframework.com/doc-2.0/yii-db-command.html)
+- [http://www.yiiframework.com/doc-2.0/guide-security-best-practices.html#avoiding-sql-injections](http://www.yiiframework.com/doc-2.0/guide-security-best-practices.html#avoiding-sql-injections)
+- 第三章*Active Model，模型和数据库*中的*从数据库获取数据*小节
+
+## 防止CSRF
+
+
 
 ![](../images/507.png)
 
