@@ -1346,8 +1346,221 @@ class RbacController extends Controller
 
 ### 工作原理...
 
+Yii模仿`NIST RBAC`模型实现了一个一般的层次化的RBAC。它通过应用组件`authManager`提供了RBAC功能。
 
+RBAC层级是一个有向无环图，也就是说，它由结点和有向连接边组成。有三种类型的结点：角色、权限和规则。
+
+角色是权限（例如创建帖子和更新帖子）的集合。一个角色可以分配给一个或多个用户。为了检查用户是否有某个指定的权限，我们可以检查这个用户是否被赋予了拥有该权限的角色。
+
+角色和权限都可以以等级化的方式组织。特别地，一个角色可以包含其它角色和权限，并且权限可以包含其它权限。Yii实现了一个偏序层级，它包含了特定的`tree`等级。当一个角色包含一个权限时，反过来说是不正确的。
+
+为了测试权限，我们创建了两个动作。第一个动作是`test`，包含了创建权限和角色的检查器。第二个动作是`delete`，它被访问过滤器限制了访问。访问过滤的规则如下所示：
+
+```
+[
+    'allow' => true,
+    'actions' => ['delete'],
+    'roles' => ['deletePost'],
+],
+```
+
+这意味着，我们允许所有拥有`deletePost`权限的用户运行`deletePost`动作。Yii以检查`deletePost`权限开始。注意到访问规则元素被命名为`roles`，你可以指定一个RBAC等级节点，无论是角色、规则还是权限。检查`updatePost`是复杂的：
+
+```
+Yii::$app->user->can('updatePost', ['post' => $post]);
+```
+
+我们使用第二个参数来传递一个帖子（在我们的例子中，我们使用`stdClass`来模拟它）。如果用户以`demo`登录，然后获得了`updatePost`的权限。如果你很幸运，你只需要go through `updatePost`，`updateOwnPost`和作者。
+
+因为`updateOwnPost`有一个定义好的规则，它会在传参给`checkAccess`时运行。如果结果为真，访问将会得到授权。因为Yii不知道最短的方法是什么，它会尝试检查所有可能性直至成功，或者没有剩余的备选项。
+
+### 更多...
+
+下面是一些有用的技巧，能让你更方便的使用RBAC。
+
+#### 保持层级简单和高效
+
+遵守如下建议来提升性能，并降低层级复杂性：
+
+- 避免给一个用户关联多个角色
+- 不要连接相同类型的结点：例如，避免连接两个task
+
+#### 命名RBAC结点
+
+一个复杂的层级如果不使用一些命名习惯的话会很难理解。能帮助我们降低复杂性的惯例是：
+
+```
+[group_][own_]entity_action
+```
+
+只有当当前用户是元素的拥有者时，才能修改这个元素的能力。这是，会使用`own`这个关键词。`group`只是一个命名空间。`entity`是我们工作的实体名称，`action`是我们执行的动作。
+
+例如，如果我们需要创建一个规则，它决定了用户是否可以删除一个博客文章，我们把它命名为`blog_post_delete`。如果这个规则决定了用户是否可以编辑他自己的评论，我们将会把它命名为`blog_own_comment_edit`。
+
+### 参考
+
+为了了解更多关于SQL注入和使用Yii处理数据库，参考如下链接：
+
+- [http://csrc.nist.gov/rbac/sandhu-ferraiolo-kuhn-00.pdf](http://csrc.nist.gov/rbac/sandhu-ferraiolo-kuhn-00.pdf)
+- [http://en.wikipedia.org/wiki/Role-based_access_control](http://en.wikipedia.org/wiki/Role-based_access_control)
+- [http://en.wikipedia.org/wiki/Directed_acyclic_graph](http://en.wikipedia.org/wiki/Directed_acyclic_graph)
+- [http://www.yiiframework.com/doc-2.0/guide-security-authorization.html#role-based-accesscontrol-rbac](http://www.yiiframework.com/doc-2.0/guide-security-authorization.html#role-based-accesscontrol-rbac)
+- *使用控制器过滤器*小节
+
+## 加密和解密数据
+
+Yii2框架包含了一个特殊的安全组件，它提供了一套方法来处理常见的安全相关的任务。`\yii\base\Security`类需要`OpenSSL`PHP扩展，而不是`mcrypt`。
+
+### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 设置数据库连接，并创建一个名叫`order`的表，如下所示：
+
+```
+DROP TABLE IF EXISTS `order`;
+CREATE TABLE IF NOT EXISTS `order` (
+    `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `client` VARCHAR(255) NOT NULL,
+    `total` FLOAT NOT NULL,
+    `encrypted_field` BLOB NOT NULL,
+    PRIMARY KEY (`id`)
+);
+```
+
+3. 使用Gii生成Order模型。
+
+### 如何做...
+
+1. 添加一个额外的key参数到`config/params.php`：
+
+```
+<?php
+return [
+    'adminEmail' => 'admin@example.com',
+    'key' => 'mysecretkey'
+];
+```
+
+2. 给`Order`模型添加`behaviors`和`helper`属性：
+
+```
+public $encrypted_field_temp;
+public function behaviors()
+{
+    return [
+        [
+            'class' => AttributeBehavior::className(),
+            'attributes' => [
+                ActiveRecord::EVENT_BEFORE_INSERT => 'encrypted_field',
+                ActiveRecord::EVENT_BEFORE_UPDATE => 'encrypted_field',
+            ],
+            'value' => function ($event) {
+                $event->sender->encrypted_field_temp = $event->sender->encrypted_field;
+                return Yii::$app->security->encryptByKey(
+                    $event->sender->encrypted_field, 
+                    Yii::$app->params['key']
+                );
+            },
+        ],
+        [
+            'class' => AttributeBehavior::className(),
+            'attributes' => [
+                ActiveRecord::EVENT_AFTER_INSERT => 'encrypted_field',
+                ActiveRecord::EVENT_AFTER_UPDATE => 'encrypted_field',
+            ],
+            'value' => function ($event) {
+                return $event->sender->encrypted_field_temp;
+            },
+        ],
+        [
+            'class' => AttributeBehavior::className(),
+            'attributes' => [
+                ActiveRecord::EVENT_AFTER_FIND => 'encrypted_field',
+            ],
+            'value' => function ($event) {
+                return Yii::$app->security->decryptByKey(
+                    $event->sender->encrypted_field,
+                    Yii::$app->params['key']
+                );
+            },
+        ],
+    ];
+}
+```
+
+3. 添加`controller/CryptoController.php`：
+
+```
+<?php
+namespace app\controllers;
+use app\models\Order;
+use Yii;
+use yii\db\Query;
+use yii\helpers\ArrayHelper;
+use yii\helpers\Html;
+use yii\helpers\VarDumper;
+use yii\web\Controller;
+/**
+ * Class CryptoController.
+ * @package app\controllers
+ */
+class CryptoController extends Controller
+{
+    public function actionTest()
+    {
+        $newOrder = new Order();
+        $newOrder->client = "Alex";
+        $newOrder->total = 100;
+        $newOrder->encrypted_field = 'very-secret-info';
+        $newOrder->save();
+        $findOrder = Order::findOne($newOrder->id);
+        return $this->renderContent(Html::ul([
+            'New model: ' . VarDumper::dumpAsString($newOrder->attributes),
+            'Find model: ' . VarDumper::dumpAsString($findOrder->attributes)
+        ]));
+    }
+    public function actionRaw()
+    {
+        $row = (new Query())->from('order')
+            ->where(['client' => 'Alex'])
+            ->one();
+        return $this->renderContent(Html::ul(
+            $row
+        ));
+    }
+}
+```
+
+4. 运行`crypto/test`：
 
 ![](../images/513.png)
 
+5. 为了查看原始数据，运行`crypto/raw`：
+
 ![](../images/514.png)
+
+### 工作原理...
+
+首先，我们已经添加了`AttributeBehavior`，当特定事件发生时，它会自动处理我们的数据。我们特定的事件是`ActiveRecord::EVENT_AFTER_INSERT`、`ActiveRecord::EVENT_AFTER_UPDATE`和`ActiveRecord::EVENT_AFTER_FIND`。
+
+在插入和更新事件期间，我们使用了一个特殊的方法`Yii::$app->security->encryptByKey();`加密了我们的数据。在保存到数据库前，这个方法使用HKDF和一个随机盐来加密我们的数据。从数据库中获取数据以后，我们也可以使用`ActiveRecord::EVENT_AFTER_FIND`方法来解密我们的数据。在这个例子中，我们也使用了特殊的Yii2方法`Yii::$app->security->encryptByKey();`。这个方法接受两个参数：加密的数据和key。
+
+### 更多...
+
+除了数据加密和解密以外，一个安全的组件也提供了基于标准算法的key derivation、数据防破坏和密码校验。
+
+#### 使用密码
+
+校验一个密码：
+
+```
+if (Yii::$app->getSecurity()->validatePassword($password, $hash)) {
+    // all good, logging user in
+} else {
+    // wrong password
+}
+```
+
+### 参考
+
+为了了解更多关于SQL注入和使用Yii处理数据库的知识，参考[http://www.yiiframework.com/doc-2.0/guide-security-passwords.html](http://www.yiiframework.com/doc-2.0/guide-security-passwords.html)。
