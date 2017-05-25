@@ -78,7 +78,60 @@ RewriteRule . index.php
 
 1. 使用如下代码创建控制器`@app/controller/FilmController.php`：
 
+```
+<?php
+namespace app\controllers;
+use yii\rest\ActiveController;
+class FilmController extends ActiveController
+{
+    public $modelClass = app\models\Film';
+}
+```
+
+更新配置文件`@app/config/web.php`。添加`urlManager`组件：
+
+```
+'urlManager' => [
+    'enablePrettyUrl' => true,
+    'enableStrictParsing' => true,
+    'showScriptName' => false,
+    'rules' => [
+        ['class' => 'yii\rest\UrlRule', 'controller' =>
+            'films'],
+    ],
+],
+```
+
+2. 在`@app/config/web.php`中重新配置请求组件：
+
+```
+'request' => [
+    'cookieValidationKey' => 'mySecretKey',
+    'parsers' => [
+        'application/json' => 'yii\web\JsonParser',
+    ],
+]
+```
+
 ### 工作原理...
+
+我们通过扩展`\yii\rest\ActiveController`来创建自己的控制器，然后设置这个控制器的`modelClass`属性。`\yii\rest\ActiveController`实现了常用动作的集合，以支持对ActiveRecord的RESTful访问。
+
+上边通过很小的努力，就实现了对电影数据的RESTful API访问。
+
+已经创建的API包括：
+
+- `GET /films`：按页列出所有的电影
+- `HEAD /films`：获取电影列表的概要信息
+- `POST /films`：创建一个新的电影
+- `GET /films/5`：获取电影5的详情
+- `HEAD /films/5`：获取电影5的概要信息
+- `PATCH /films/5 and PUT /films/5`：更新电影5
+- `DELETE /films/5`：删除电影5
+- `OPTIONS /films`：显示`/films`支持的操作
+- `OPTIONS /films/5`：显示`/films/5`支持的操作
+
+
 
 ### 更多...
 
