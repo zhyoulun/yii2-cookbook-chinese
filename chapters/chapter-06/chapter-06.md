@@ -131,25 +131,326 @@ class FilmController extends ActiveController
 - `OPTIONS /films`：显示`/films`支持的操作
 - `OPTIONS /films/5`：显示`/films/5`支持的操作
 
+之所以会有这些功能是因为`\yii\rest\ActiveController`支持如下动作：
 
+- `index`：列出模型
+- `view`：返回模型的细节
+- `create`：创建一个新的模型
+- `update`：更新一个已有的模型
+- `delete`：删除一个已有的模型
+- `options`：返回允许的HTTP方法
+
+`verbs()`方法为每一个动作定义了允许的请求方法。
+
+为了检查我们的RESTful API是否工作正常，我们来发送几个请求。
+
+首先使用`GET`请求。在控制台中运行如下命令：
+
+```
+curl -i -H "Accept:application/json" "http://yii-book.app/films"
+```
+
+你将会得到如下输出：
+
+```
+HTTP/1.1 200 OK
+Date: Wed, 23 Sep 2015 17:46:35 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+X-Pagination-Total-Count: 5
+X-Pagination-Page-Count: 1
+X-Pagination-Current-Page: 1
+X-Pagination-Per-Page: 20
+Link: <http://yii-book.app/films?page=1>; rel=self
+Content-Length: 301
+Content-Type: application/json; charset=UTF-8
+[{"id":1,"title":"Interstellar","release_year":2014},{"id":2,"title":
+"Harry Potter and the Philosopher's
+Stone","release_year":2001},{"id":3,"title":"Back to the
+Future","release_year":1985},{"id":4,"title":"Blade
+Runner","release_year":1982},{"id":5,"title":"Dallas Buyers
+Club","release_year":2013}]
+```
+
+发送一个`POST`请求。在控制台中运行如下命令：
+
+```
+curl -i -H "Accept:application/json" -X POST -d title="New film" -d release_year=2015 "http://yii-book.app/films"
+```
+
+你将会得到如下输出：
+
+```
+HTTP/1.1 201 Created
+Date: Wed, 23 Sep 2015 17:48:06 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Location: http://yii-book.app/films/6
+Content-Length: 49
+Content-Type: application/json; charset=UTF-8
+{"title":"New film","release_year":"2015","id":6}
+```
+
+获取创建好的电影。在控制台中运行如下命令：
+
+```
+curl -i -H "Accept:application/json" "http://yii-book.app/films/6"
+```
+
+你将会得到如下输出：
+
+```
+HTTP/1.1 200 OK
+Date: Wed, 23 Sep 2015 17:48:36 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Content-Length: 47
+Content-Type: application/json; charset=UTF-8
+{"id":6,"title":"New film","release_year":2015}
+```
+
+发送一个`DELETE`请求。在控制台中运行如下命令：
+
+```
+curl -i -H "Accept:application/json" -X DELETE "http://yii-book.app/films/6"
+```
+
+你将会得到如下输出：
+
+```
+HTTP/1.1 204 No Content
+Date: Wed, 23 Sep 2015 17:48:55 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Content-Length: 0
+Content-Type: application/json; charset=UTF-8
+```
 
 ### 更多...
 
+接下来我们看下内容negotiation和自定义Rest URL规则：
+
 #### Content negotiation
 
-#### 自定义REST URL规则
+你也可以很容易使用内容negotiation行为格式化你的响应：
+
+例如，你可以将这个代码放入到你的控制器中，这样所有的数据都会以XML格式返回：
+
+你应该看下文档中所有的格式列表。
+
+```
+use yii\web\Response;
+public function behaviors()
+{
+    $behaviors = parent::behaviors();
+    $behaviors['contentNegotiator']['formats']['application/xml']=Response::FORMAT_XML;
+    return $behaviors;
+}
+```
+
+在控制台中运行：
+
+```
+curl -i -H "Accept:application/xml" "http://yii-book.app/films"
+```
+
+你将会得到如下输出：
+
+```
+HTTP/1.1 200 OK
+Date: Wed, 23 Sep 2015 18:02:47 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+X-Pagination-Total-Count: 5
+X-Pagination-Page-Count: 1
+X-Pagination-Current-Page: 1
+X-Pagination-Per-Page: 20
+Link: <http://yii-book.app/films?page=1>; rel=self
+Content-Length: 516
+Content-Type: application/xml; charset=UTF-8
+<?xml version="1.0" encoding="UTF-8"?>
+<response>
+    <item>
+        <id>1</id>
+        <title>Interstellar</title>
+        <release_year>2014
+        </release_year>
+    </item>
+    <item>
+        <id>2</id>
+        <title>Harry Potter and the Philosopher's Stone</title>
+        <release_year>2001
+        </release_year>
+    </item>
+    <item>
+        <id>3</id>
+        <title>Back to the Future</title>
+        <release_year>1985
+        </release_year>
+    </item>
+    <item>
+        <id>4</id>
+        <title>Blade Runner</title>
+        <release_year>1982
+        </release_year>
+    </item>
+    <item>
+        <id>5</id>
+        <title>Dallas Buyers Club</title>
+        <release_year>2013
+        </release_year>
+    </item>
+</response>
+```
+
+#### 自定义Rest URL规则
+
+默认情况下，你必须记住一个以复杂格式定义的控制器ID。这是因为`yii\rest\UrlRule`自动复杂化控制器ID。你可以很容易的通过设置`yii\rest\UrlRule::$pluralize`的值为false，来关掉它：
+
+```
+'urlManager' => [
+    //..
+    'rules' => [
+        [
+            'class' => 'yii\rest\UrlRule',
+            'controller' => 'film'
+            'pluralize' => false
+        ],
+    ],
+    //..
+]
+```
+
+如果你希望控制器按照指定的格式出现，你可以添加一个自定义名称到键值对，其中键是控制器ID，值是真正的控制器ID，例如：
+
+```
+'urlManager' => [
+    //..
+    'rules' => [
+        [
+            'class' => 'yii\rest\UrlRule',
+            'controller' => ['super-films' => 'film']
+        ],
+    ],
+    //..
+]
+```
 
 ### 参考
 
+欲了解更多信息，参考如下地址：
+
+- [http://www.yiiframework.com/doc-2.0/guide-rest-quick-start.html](http://www.yiiframework.com/doc-2.0/guide-rest-quick-start.html)
+- [http://www.yiiframework.com/doc-2.0/yii-rest-urlrule.html](http://www.yiiframework.com/doc-2.0/yii-rest-urlrule.html)
+- [http://www.yiiframework.com/doc-2.0/guide-rest-response-formatting.html](http://www.yiiframework.com/doc-2.0/guide-rest-response-formatting.html)
+- [http://budiirawan.com/setup-restful-api-yii2/](http://budiirawan.com/setup-restful-api-yii2/)
+
 ## 身份校验
+
+在本小节中我们将会设置身份校验模型。
 
 ### 准备
 
+重复*创建一个REST服务器*小节中*准备*和*如何做*的所有步骤。
+
 ### 如何做...
+
+1. 修改`@app/controllers/FilmController`：
+
+```
+<?php
+namespace app\controllers;
+use app\models\User;
+use Yii;
+use yii\helpers\ArrayHelper;
+use yii\rest\ActiveController;
+use yii\filters\auth\HttpBasicAuth;
+class FilmController extends ActiveController
+{
+    public $modelClass = 'app\models\Film';
+    public function behaviors()
+    {
+        return ArrayHelper::merge(parent::behaviors(),[
+            'authenticator' => [
+                'authMethods' => [
+                    'basicAuth' => [
+                        'class' =>HttpBasicAuth::className(),
+                        'auth' => function ($username,$password) {
+                            $user =User::findByUsername($username);
+                            if ($user !== null && $user->validatePassword($password)){
+                                return $user;
+                            }
+                            return null;
+                        },
+                    ]
+                ]
+            ]
+        ]);
+    }
+}
+```
+
+在浏览器中打开`http://yii-book.app/films`，确保我们配置了HTTP基本身份验证：
 
 ![](../images/601.png)
 
+尝试身份验证。在控制台中运行如下命令：
+
+```
+curl -i -H "Accept:application/json" "http://yii-book.app/films"
+```
+
+你将会得到如下结果：
+
+```
+HTTP/1.1 401 Unauthorized
+Date: Thu, 24 Sep 2015 01:01:24 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Www-Authenticate: Basic realm="api"
+Content-Length: 149
+Content-Type: application/json; charset=UTF-8
+{"name":"Unauthorized","message":"You are requesting with an invalid credential.","code":0,"status":401,"type":"yii\\web\\UnauthorizedHttp
+Exception"}
+```
+
+1. 现在尝试使用`cURL`进行`auth`：
+
+```
+curl -i -H "Accept:application/json" -u admin:admin "http://yii-book.app/films"
+```
+
+2. 你将会得到类似如下结果：
+
+```
+HTTP/1.1 200 OK
+Date: Thu, 24 Sep 2015 01:01:40 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Set-Cookie: PHPSESSID=8b3726040bf8850ebd07209090333103; path=/;
+HttpOnly
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate,
+post-check=0, pre-check=0
+Pragma: no-cache
+X-Pagination-Total-Count: 5
+X-Pagination-Page-Count: 1
+X-Pagination-Current-Page: 1
+X-Pagination-Per-Page: 20
+Link: <http://yii-book.app/films?page=1>; rel=self
+Content-Length: 301
+Content-Type: application/json; charset=UTF-8
+[{"id":1,"title":"Interstellar","release_year":2014},{"id":2,"ti
+tle":"Harry Potter and the Philosopher's
+Stone","release_year":2001},{"id":3,"title":"Back to the
+Future","release_year":1985},{"id":4,"title":"Blade
+Runner","release_year":1982},{"id":5,"title":"Dallas Buyers
+Club","release_year":2013}]
+```
+
 ### 工作原理...
+
+
 
 ### 更多...
 
