@@ -766,19 +766,91 @@ Accept: application/vnd.company.myproject-v1+json
 Accept: application/json; version=v1
 ```
 
-
+所以，现在我们有了两个版本的API，我们可以很容易的修改v2版本。我们的老客户继续使用v1版本，新用户或者愿意升级的用户可以使用v2版本。
 
 ### 更多...
 
-## 错误控制
+欲了解更多信息，参考：
+
+- [http://www.yiiframework.com/doc-2.0/guide-rest-versioning.html](http://www.yiiframework.com/doc-2.0/guide-rest-versioning.html)
+- [http://budiirawan.com/setup-restful-api-yii2/](http://budiirawan.com/setup-restful-api-yii2/)
+
+## 错误处理
+
+有时你希望自定义默认的错误处理格式。例如，我们需要知道响应时间戳，以及响应是否是成功的。框架提供了一个很简单的方式来做到这点。
 
 ### 准备
 
+重复*创建一个REST服务器*小节中*准备*和*如何做...*的所有步骤。
+
 ### 如何做...
+
+为了达到这个目标，你可以响应`@app/config/web.php`中的respond to the `beforeSend` event of the response组件：
+
+```
+'response' => [
+    'class' => 'yii\web\Response',
+    'on beforeSend' => function ($event) {
+        $response = $event->sender;
+        if ($response->data !== null) {
+            $response->data = [
+                'success' => $response->isSuccessful,
+                'timestamp' => time(),
+                'path' => Yii::$app->request->getPathInfo(),
+                'data' => $response->data,
+            ];
+        }
+    },
+],
+```
 
 ### 工作原理...
 
+为了了解代码中发生了什么，我们来试一下。首先，在控制台中运行如下代码：
+
+```
+curl -i "http://yii-book.app/films/1"
+```
+
+你将得到如下输出：
+
+```
+HTTP/1.1 200 OK
+Date: Thu, 24 Sep 2015 04:24:52 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Content-Length: 115
+Content-Type: application/json; charset=UTF-8
+{"success":true,"timestamp":1443068692,"path":"films/
+1","data":{"id":1,"title":"Interstellar","release_year":2014}}
+```
+
+然后，在控制台中运行如下代码：
+
+```
+curl -i "http://yii-book.app/films/1000"
+```
+
+你将得到如下代码：
+
+```
+HTTP/1.1 404 Not Found
+Date: Thu, 24 Sep 2015 04:24:26 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Content-Length: 186
+Content-Type: application/json; charset=UTF-8
+{"success":false,"timestamp":1443068666,"path":"films/
+1000","data":{"name":"Not Found","message":"Object not found:
+1000","code":0,"status":404,"type":"yii\\web\\NotFoundHttpException"}
+}
+```
+
+我们在发送响应内容前做了修改。这中方法很容易定义响应是否成功。
+
 ### 参考
+
+欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/guide-rest-error-handling.html](http://www.yiiframework.com/doc-2.0/guide-rest-error-handling.html)。
 
 
 
