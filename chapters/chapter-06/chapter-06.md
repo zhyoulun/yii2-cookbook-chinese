@@ -450,29 +450,323 @@ Club","release_year":2013}]
 
 ### 工作原理...
 
-
+我们将`authenticator`行为添加到了`HttpBasicAuth`类中，所以我们将可以通过登录名和密码进行身份校验。你可以实现官方文档中RESTful web服务部分的任意身份校验方法。
 
 ### 更多...
 
+其它发送access token的方法：
+
+- HTTP基础验证
+- 查询参数
+- OAuth
+
+Yii支持所有这些身份校验方法。
+
 ### 参考
+
+欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/guide-rest-rate-limiting.html](http://www.yiiframework.com/doc-2.0/guide-rest-rate-limiting.html)。
 
 ## 频率限制
 
+为了防止滥用，你应该考虑为API添加频率限制。例如，你希望每一个用户在一分钟的时间内，最多调用五次API。如果调用过多，将会返回状态码429（*太多的请求*）。
+
 ### 准备
+
+重复*创建一个REST服务器*小节中*准备*和*如何做...*的所有步骤。
+
+1. 创建一个migration，用于创建一个用户允许表，命令如下：
+
+```
+./yii migrate/create create_user_allowance_table
+```
+
+2. 然后使用如下代码更新刚刚创建的migration，`up`：
+
+```
+public function up()
+{
+    $tableOptions = null;
+    if ($this->db->driverName === 'mysql') {
+        $tableOptions = 'CHARACTER SET utf8 COLLATEutf8_general_ci ENGINE=InnoDB';
+    }
+    $this->createTable('{{%user_allowance}}', [
+        'user_id' => $this->primaryKey(),
+        'allowed_number_requests' => $this->integer(10)->notNull(),
+        'last_check_time' => $this->integer(10)->notNull()
+    ], $tableOptions);
+}
+```
+
+3. 使用如下代码更新`down`方法：
+
+```
+public function down()
+{
+    $this->dropTable('{{%user_allowance}}');
+}
+```
+
+4. 运行创建的`create_firm_table` migration。
+5. 使用Gii模块生成`UserAllowance`模型。
 
 ### 如何做...
 
+首先，你必须更新`@app/controllers/FilmController.php`：
+
+```
+<?php
+namespace app\controllers;
+use yii\rest\ActiveController;
+use yii\filters\RateLimiter;
+use yii\filters\auth\QueryParamAuth;
+class FilmController extends ActiveController
+{
+    public $modelClass = 'app\models\Film';
+    public function behaviors()
+    {
+        $behaviors = parent::behaviors();
+        $behaviors['authenticator'] = [
+            'class' => QueryParamAuth::className(),
+        ];
+        $behaviors['rateLimiter'] = [
+            'class' => RateLimiter::className(),
+            'enableRateLimitHeaders' => true
+        ];
+        return $behaviors;
+    }
+}
+```
+
+为了激活频率限制，`User`模型类应该实现`yii\filters\RateLimitInterface`，并实现三个方法：`getRateLimit()`、`loadAllowance()`、`saveAllowance()`。你需要添加`RATE_LIMIT_NUMBER`和`RATE_LIMIT_RESET`两个常数：
+
+```
+<?php
+namespace app\models;
+class User extends \yii\base\Object implements \yii\web\IdentityInterface, \yii\filters\RateLimitInterface
+{
+    public $id;
+    public $username;
+    public $password;
+    public $authKey;
+    public $accessToken;
+    const RATE_LIMIT_NUMBER = 5;
+    const RATE_LIMIT_RESET = 60;
+    // it means that user allowed only 5 requests per one minute
+    public function getRateLimit($request, $action)
+    {
+        return [self::RATE_LIMIT_NUMBER,self::RATE_LIMIT_RESET];
+    }
+    public function loadAllowance($request, $action)
+    {
+        $userAllowance = UserAllowance::findOne($this->id);
+        return $userAllowance ?
+            [$userAllowance->allowed_number_requests,$userAllowance->last_check_time] 
+            :$this->getRateLimit($request, $action);
+}
+    public function saveAllowance($request, $action,$allowance,
+                                  $timestamp)
+    {
+        $userAllowance = ($allowanceModel =UserAllowance::findOne($this->id)) ?$allowanceModel : new UserAllowance();
+        $userAllowance->user_id = $this->id;
+        $userAllowance->last_check_time = $timestamp;
+        $userAllowance->allowed_number_requests =$allowance;
+        $userAllowance->save();
+    }
+    // other User model methods
+}
+```
+
 ### 工作原理...
+
+一旦验证类实现了需要的接口，Yii将会自动使用\[\[`yii\rest\Controller`\]\]动作过滤器中配置的\[\[`\yii\filter\RateLimiter`\]\]来运行频率检查。我们也需要为`authenticator`行为添加`QueryParamAuth`类。所以，我们现在能够只需要通过查询参数传递一个access token来进行身份校验。你可以添加官方文档中RESTful web服务部分中描述的任何一个身份验证方法。
+
+下面来解释我们的方法，非常容易理解。
+
+`getRateLimit()`：返回允许请求的最大数量和时间段（例如，[100,600]表示600秒内最多运行100次API调用）
+`loadAllowance()`：返回剩余运行请求的数量，以及上次检查频率限制的UNIX时间戳。
+`saveAllowance()`：保存剩余运行请求数量的值，以及当前UNIX时间戳。
+
+我们将数据存放在MySQL数据库中。考虑到性能，你也许可以使用一个NoSQL数据库或者其它能更快获取和加载数据的存储系统。
+
+现在我们来检查频率限制特性。运行如下代码：
+
+```
+curl -i "http://yii-book.app/films?access-token=100-token"
+```
+
+你将会得到如下输出：
+
+```
+HTTP/1.1 200 OK
+Date: Thu, 24 Sep 2015 01:35:51 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Set-Cookie: PHPSESSID=495a928978cc732bee853b83f521eba2; path=/;
+HttpOnly
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0,
+pre-check=0
+Pragma: no-cache
+X-Rate-Limit-Limit: 5
+X-Rate-Limit-Remaining: 4
+X-Rate-Limit-Reset: 0
+X-Pagination-Total-Count: 5
+X-Pagination-Page-Count: 1
+X-Pagination-Current-Page: 1
+X-Pagination-Per-Page: 20
+Link: <http://yii-book.app/films?access-token=100-token&page=1>;
+rel=self
+Content-Length: 301
+Content-Type: application/json; charset=UTF-8
+[{"id":1,"title":"Interstellar","release_year":2014},{"id":2,"title":
+"Harry Potter and the Philosopher's
+Stone","release_year":2001},{"id":3,"title":"Back to the
+Future","release_year":1985},{"id":4,"title":"Blade
+Runner","release_year":1982},{"id":5,"title":"Dallas Buyers
+Club","release_year":2013}]
+```
+
+来看下返回的头部。当激活了频率限制，默认情况下每次响应将会发送当前频率限制的信息：
+
+**X-Rate-Limit-Limit**：在一段时间内最大允许请求的数量
+**X-Rate-Limit-Remaining**：在当前时间内容剩余的允许请求数量
+**X-Rate-Limit-Reset**：这是需要等待的时间数，来获取最大数量的允许请求
+
+现在尝试超过限制，在一分钟内运行超过5次，将会得到`TooManyRequestsHttpExeption`：
+
+```
+HTTP/1.1 429 Too Many Requests
+Date: Thu, 24 Sep 2015 01:37:24 GMT
+Server: Apache
+X-Powered-By: PHP/5.5.23
+Set-Cookie: PHPSESSID=bb630ca8a641ef92bd210c0a936e3149; path=/;
+HttpOnly
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate, post-check=0,
+pre-check=0
+Pragma: no-cache
+X-Rate-Limit-Limit: 5
+X-Rate-Limit-Remaining: 0
+X-Rate-Limit-Reset: 60
+Content-Length: 131
+Content-Type: application/json; charset=UTF-8
+{"name":"Too Many Requests","message":"Rate limit
+exceeded.","code":0,"status":429,"type":"yii\\web\\TooManyRequestsHtt
+pException"}
+```
 
 ### 参考
 
-## 版本控制
+欲了解更多信息，参考如下地址：
+
+- [https://en.wikipedia.org/wiki/Leaky_bucket](https://en.wikipedia.org/wiki/Leaky_bucket)
+- [http://www.yiiframework.com/doc-2.0/guide-rest-rate-limiting.html](http://www.yiiframework.com/doc-2.0/guide-rest-rate-limiting.html)
+- [http://www.yiiframework.com/doc-2.0/yii-filters-ratelimiter.html](http://www.yiiframework.com/doc-2.0/yii-filters-ratelimiter.html)
+
+## 版本
+
+如果你的API没有版本是非常可怕的。假设你有一个重大改变——和客户端开发者的计划相违背，例如重命名或者删除一个参数，或者改变响应的格式——你将冒着破坏你顾客系统的风险，进而导致愤怒的支持电话或者更糟糕的客户流失。这就是为什么你需要保持你的API是版本化的。在Yii2中，版本可以很容易的通过模块来完成，所以版本被认为是孤立的一块代码。
 
 ### 准备
 
+重复*创建一个REST服务器*小节中*准备*和*如何做...*的所有步骤。
+
 ### 如何做...
 
+1. 在你的app文件夹中创建如下结构。总的来说，你需要创建`@app/modules`文件夹以及`v1`和`v2`子文件夹。在每一个模块文件中，你需要创建控制器和模型文件夹：
+
+```
+app/
+    modules/
+    v1/
+        controllers/
+            FilmController.php
+        Module.php
+    v2/
+        controllers/
+            FilmController.php
+        Module.php
+```
+
+2. 添加导入模块到`@app/config/web.php`：
+
+```
+'modules' => [
+    'v1' => [
+        'class' => 'app\modules\v1\Module',
+    ],
+    'v2' => [
+        'class' => 'app\modules\v2\Module'
+    ]
+],
+```
+
+3. 使用如下代码创建`@app/modules/v1/controllers/FilmController.php`和`@app/modules/v2/controllers/FilmController.php`：
+
+```
+<?php
+namespace app\modules\v1\controllers;
+use yii\rest\ActiveController;
+class FilmController extends ActiveController
+{
+    public $modelClass = 'app\models\Film';
+}
+```
+
+
+```
+<?php
+namespace app\modules\v1\controllers;
+use yii\rest\ActiveController;
+class FilmController extends ActiveController
+{
+    public $modelClass = 'app\models\Film';
+}
+```
+
+使用如下代码创建`@app/modules/v1/Module.php`和`@app/modules/v2/Module.php`：
+
+```
+<?php
+namespace app\modules\v1;
+class Module extends \yii\base\Module
+{
+    public function init()
+    {
+        parent::init();
+    }
+}
+```
+
+```
+<?php
+namespace app\modules\v2;
+class Module extends \yii\base\Module
+{
+    public function init()
+    {
+        parent::init();
+    }
+}
+```
+
 ### 工作原理...
+
+每一个模块代表我们API中的一个独立的版本：
+
+现在你将能以两种方式指定API版本：
+
+1. 通过API URL。你可以指定v1或者v2版本。结果是`http://yiibook.app/v1/film`返回版本1的电影列表，`http://yiibook.app/v2/film`将会返回版本2的电影列表。
+2. 你可以通过HTTP请求头指定一个版本号。通常来说，这可以通过`Accept`头来完成：
+
+```
+// as a vendor content type
+Accept: application/vnd.company.myproject-v1+json
+// via a parameter
+Accept: application/json; version=v1
+```
+
+
 
 ### 更多...
 
