@@ -334,23 +334,188 @@ Yii::$app->mailer->compose()
 
 3. 检查你的Gmail收件箱。
 
-**注意**：Gmail自动重写
+**注意**：Gmail自动重写`From`字段为你的默认电子邮件ID，但其他电子邮件系统没有这么做。在传输配置中总是使用一个唯一电子邮件ID，并在`setFrom()`方法中为其它电子邮件系统中传递反垃圾邮件政策。
 
 #### 添加附件和图片
 
-### 如何做...
+添加相关的方法来附加任何文件到你的邮件中：
+
+```
+class MailController extends Controller
+{
+    public function actionSendAttach()
+    {
+        Yii::$app->mailer->compose()
+            ->setTo('to@yii-book.app')
+            ->setFrom(['from@yii-book.app' => Yii::$app->name])
+            ->setSubject('My Test Message')
+            ->setTextBody('My Text Body')
+            ->attach(Yii::getAlias('@app/README.md'))
+            ->send();
+    }
+}
+```
+
+或者在你的电子邮件视图文件中使用`embed()`方法来粘贴一个图片到电子邮件内容中：
+
+```
+<img src="<?= $message->embed($imageFile); ?>">
+```
+
+它会自动添加图片文件附件并插入它的唯一标识。
+
+### 工作原理...
+
+wrapper实现了`\yii\mail\MailerInterface`。它的`compose()`方法返回了一个消息对象（`\yii\mail\MessageInterface`的一个实现）。
+
+你可以使用`setTextBody()`和`setHtmlBody()`手动设置纯文本和HTML内容，或者你可以将你的视图和视图参数传递给`compose()`方法。在这个例子中，mailer调用`\yii\web\View::render()`方法来渲染相应的内容。
+
+`useFileTransport`参数在文件中存储电子邮件而不是真正的发送。它对于本地开发和应用测试非常有用。
 
 ### 参考
 
+- 欲了解更多关于`yii2-swiftmailer`扩展的信息，访问如下地址：
+    + [http://www.yiiframework.com/doc-2.0/guide-tutorial-mailing.html](http://www.yiiframework.com/doc-2.0/guide-tutorial-mailing.html)
+    + [http://www.yiiframework.com/doc-2.0/ext-swiftmailer-index.html](http://www.yiiframework.com/doc-2.0/ext-swiftmailer-index.html)
+- 欲了解更多关于`SwiftMailer`库，参考如下地址：
+    + [http://swiftmailer.org/docs/introduction.html](http://swiftmailer.org/docs/introduction.html)
+    + [https://github.com/swiftmailer/swiftmailer](https://github.com/swiftmailer/swiftmailer)
+
 ## Fake fixture 数据生成器
+
+`fzaninotto/faker`是一个PHP扩展，它可以生成需要种类的假数据：名称、电话、地址，以及随机字符串和数字等等。它可以帮助你生成需要随机记录，用于性能和逻辑测试。你可以通过写自己的formatters和generators来扩展你支持的类型集合。
+
+在Yii2应用骨架中，`yiisoft/yii2-faker` wrapper被包含在`composer.json`文件的`require-dev`部分中，这部分用于测试代码（第十一章，*测试*）。这个wrapper为控制台应用和测试环境提供`FixtureController`控制台。
 
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+
 ### 如何做...
+
+1. 打开目录`tests/codeception/templates`并添加fixture模板文件`users.txt`：
+
+```
+<?php
+/**
+* @var $faker \Faker\Generator
+* @var $index integer
+*/
+return [
+    'name' => $faker->firstName,
+    'phone' => $faker->phoneNumber,
+    'city' => $faker->city,
+    'about' => $faker->sentence(7, true),
+    'password' => Yii::$app->getSecurity()->generatePasswordHash('password_' . $index),
+    'auth_key' => Yii::$app->getSecurity()->generateRandomString(),
+];
+```
+
+2. 运行测试控制台`yii`命令：
+
+```
+php tests/codeception/bin/yii fixture/generate users --count=2
+```
+
+3. 确认migration生成。
+
+4. 检查`tests/codeception/fixtures`是否包含新的`users.php`文件，以及自动生成的数据：
+
+```
+return [
+    [
+        'name' => 'Isadore',
+        'phone' => '952.877.8545x190',
+        'city' => 'New Marvinburgh',
+        'about' => 'Ut quidem voluptatem itaque veniam voluptas dolores.',
+        'password' => '$2y$13$Fi3LOl/sKlomUH.DLgqBkOB/uCLmgCoPPL1KXiW0hffnkrdkjCzAC',
+        'auth_key' => '1m05hlgaAG8zfm0cyDyoRGMkbQ9W6hj1',
+    ],
+    [
+        'name' => 'Raleigh',
+        'phone' => '1-655-488-3585x699',
+        'city' => 'Reedstad',
+        'about' => 'Dolorem quae impedit tempore libero doloribus nobis dicta tempora facere.',
+        'password' => '$2y$13$U7Qte5Y1jVLrx/pnhwdwt.1uXDegGXuNVzEQyUsb65WkBtjyjUuYm',
+        'auth_key' => 'uWWJDgy5jNRk6KjqpxS5JuPv0OHearqE',
+    ],
+],
+```
 
 #### 使用你自己的数据类型
 
+1. 使用你自定义生成逻辑创建你自己的provider：
+
+```
+<?php
+namespace tests\codeception\faker\providers;
+use Faker\Provider\Base;
+class UserStatus extends Base
+{
+    public function userStatus()
+    {
+        return $this->randomElement([0, 10, 20, 30]);
+    }
+}
+```
+
+2. 在`/tests/codeception/config/config.php`文件中添加provider到provider列表中：
+
+```
+return [
+    'controllerMap' => [
+        'fixture' => [
+            'class' => 'yii\faker\FixtureController',
+            'fixtureDataPath' => '@tests/codeception/fixtures',
+            'templatePath' => '@tests/codeception/templates',
+            'namespace' => 'tests\codeception\fixtures',
+            'providers' => [
+                'tests\codeception\faker\providers\UserStatus',
+            ],
+        ],
+    ],
+// ...
+];
+```
+
+3. 添加`status`字段到你的fixture模板文件中：
+
+```
+<?php
+/**
+ * @var $faker \Faker\Generator
+ * @var $index integer
+ */
+return [
+    'name' => $faker->firstName,
+    'status' => $faker->userStatus,
+];
+```
+
+4. 使用控制台命令生成fixture：
+
+```
+php tests/codeception/bin/yii fixture/generate users --count=2
+```
+
+5. 检查`fixtures/users.php`生成的代码是否包含你的自定义值：
+
+```
+return [
+    [
+        'name' => 'Christelle',
+        'status' => 30,
+    ],
+    [
+        'name' => 'Theo',
+        'status' => 10,
+    ],
+];
+```
+
 ### 工作原理...
+
+`yii2-faker`扩展包含一个控制台生成器（它使用你的模板来生成fixture数据文件），并给了你一个准备好的
 
 #### 注意
 
