@@ -515,21 +515,71 @@ return [
 
 ### 工作原理...
 
-`yii2-faker`扩展包含一个控制台生成器（它使用你的模板来生成fixture数据文件），并给了你一个准备好的
+`yii2-faker`扩展包含一个控制台生成器（它使用你的模板来生成fixture数据文件），并给了你一个准备好的原始`Faker`对象实例。你可以生成所有或者指定的fixtures，并且你可以在控制台参数中传递自定义数值或者语言。
 
-#### 注意
+**注意**
+
+如果你的测试使用这些fixtures的话，小心已存在的测试文件，因为自动生成会完全覆盖旧数据。
 
 ### 参考
 
+- 源代码以及关于扩展的更多信息，参考：
+- [https://github.com/yiisoft/yii2-faker/tree/master/docs/guide](https://github.com/yiisoft/yii2-faker/tree/master/docs/guide)
+- [http://www.yiiframework.com/doc-2.0/ext-faker-index.html](http://www.yiiframework.com/doc-2.0/ext-faker-index.html)
+- 欲了解更多关于原始库的信息，参考：
+- [https://github.com/fzaninotto/Faker](https://github.com/fzaninotto/Faker)
+- 第十一章，*测试*
+
 ## Imagine库
+
+Imagine是用于操作图片的OOP库。它可以让你在GD、Imagic和Gmagic PHP扩展的帮助下，对多种格式的图片进行裁剪、缩放以及执行其它操作。Yii2-Imagine是队这个库的轻量静态封装。
 
 ### 准备
 
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 使用如下命令安装扩展：
+
+```
+composer require yiisoft/yii2-imagine
+```
+
 ### 如何做...
+
+在你的项目中，你可以以两种方式使用扩展：
+
+- 作为工厂使用
+- 使用内部方法
 
 #### 作为工厂使用
 
+你可以使用`Imagine`库类的一个实例：
+
+```
+$imagine = new Imagine\Gd\Imagine();
+// or
+$imagine = new Imagine\Imagick\Imagine();
+// or
+$imagine = new Imagine\Gmagick\Imagine();
+```
+
+但是，这依赖于你系统中已存在的PHP扩展。你可以使用`getImagine()`方法：
+
+```
+$imagine = \yii\imagine\Image::getImagine();
+```
+
 #### 使用内部方法
+
+你可以使用`corp()`、`thumbnail()`、`watermark()`、`text()`、`frame()`方法用于常见的高级操作：
+
+```
+<?php
+use yii\imagine\Image;
+Image::crop('path/to/image.jpg', 100, 100, ManipulatorInterface::THUMBNAIL_OUTBOUND)
+->save('path/to/destination/image.jpg', ['quality' => 90]);
+```
+
+
 
 ### 工作原理...
 
