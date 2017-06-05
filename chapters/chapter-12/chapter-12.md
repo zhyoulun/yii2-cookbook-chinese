@@ -118,19 +118,347 @@ class LogController extends Controller
 
 profiling信息展示了我们代码块的所有执行时长。
 
-7. 因为我们刚刚
+7. 因为我们刚刚修改了日志文件的名称，而不是路径，你应该能在`runtime/logs`中找到日志文件`error.log`、`warning.log`和`info.log`。
+8. 打开文件你将会看到如下消息：
 
 ```
-
+2016-03-06 07:28:35 [127.0.0.1][-][-][error][example] error
+...
+2016-03-06 07:28:35 [127.0.0.1][-][-][warning][example] warning
+...
+2016-03-06 07:28:35 [127.0.0.1][-][-][info][example] info
 ```
 
+### 工作原理...
 
+当使用`Yii::erorr`、`Yii::warning`、`Yii::info`或者`Yii::trace`打日志时，Yii将它传递给了日志路由。
 
+依赖于如何配置，它会将消息发送给一个或多个目标，例如，通过电子邮件发送错误信息、将调试信息写入到文件A中、将警告信息写入到文件B中。
 
+`yii\log\Dispatcher`类的对象通常被附加在一个名叫log的应用组件上。因此，为了配置它，我们应该在配置文件组件部分设置它的属性。这里唯一可配的属性是targets，它包含了一组日志路由和他们的配置。
+
+我们已经定义了四个日志路由。这里回顾一下：
+
+```
+[
+    'class' => 'yii\log\EmailTarget',
+    'categories' => ['example'],
+    'levels' => ['error'],
+// 'mailer' => 'mailer',
+    'message' => [
+        'from' => ['log@example.com'],
+        'to' => ['developer1@example.com', 'developer2@example.com'],
+        'subject' => 'Log error',
+    ],
+],
+```
+
+`EmailTarget`默认通过`Yii::$app->mailer`组件发送一封电子邮件来发送日志消息。我们将类别限制为example，并将级别限制为error。电子邮件将会从`log@example.com`发送给两个开发者，且主题是`Log error`：
+
+```
+[
+    'class' => 'yii\log\FileTarget',
+    'levels' => [warning],
+    'logFile' => '@runtime/logs/warning.log',
+],
+```
+
+`FileTarget`将错误消息发送到一个指定的文件。我们将消息级别限制为warning，并使用一个名叫`warning.log`的文件。同样我们将info级别的消息存放在`Info.log`文件中。
+
+此外，我们可以使用`yii\log\SyslogTarget`将消息写到Unix `/var/log/syslog`系统文件中，或者使用`yii\log\DbTarget`将消息写入到数据库中。对于第二种情况，你必须应用他们的migration：
+
+```
+./yii migrate --migrationPath=@yii/log/migrations/
+```
+
+### 更多...
+
+关于Yii打日志有很多有趣的东西，在接下来的部分中进行讨论。
+
+#### Yii::trace和Yii::getLogger()->log
+
+`Yii::trace`是对`Yii::log`的封装：
+
+```
+public static function trace($message, $category = 'application')
+{
+    if (YII_DEBUG) {
+        static::getLogger()->log($message, Logger::LEVEL_TRACE, $category);
+    }
+}
+```
+
+因此，如果Yii在`debug`模式下，`Yii::trace`使用trace级别来打日志。
+
+#### Yii::beginProfile和Yii::endProfile
+
+这些方法被用于测量应用中部分代码的执行时间。在我们的`LogController`中，我们测量了`preg_replace`执行10000次所用的时间：
+
+```
+Yii::beginProfile('preg_replace', 'example');
+for($i=0;$i<10000;$i++){
+    preg_replace('~^[ a-z]+~', '', 'test it');
+}
+Yii::endProfile('preg_replace', 'example');
+```
+
+`Yii::beginProfile`标记用于profiling的代码块开头。我们必须为每一个代码块设置一个唯一的token，以及指定一个可选的分类：
+
+```
+public static function beginProfile($token, $category = 'application') { … }
+```
+
+`Yii::endProfile`可以匹配到先前调用有相同的分类名的`beginProfile`：
+
+```
+public static function endProfile($token, $category = 'application') { … }
+```
+
+`begin-`和`end-`调用也必须被正确的嵌套。
+
+#### 立即打日志消息
+
+默认情况下，Yii会将所有的日志消息存放在内存中，知道应用终止。这是为了性能考虑，并且一般都能运行良好。
+
+但是，如果一个控制台应用需要长时间运行，日志消息将不会被立刻写出。为了确保你的消息能在任何时候都被打印出来，你可以使用`Yii::$app->getLogger()>flush(true)`显式刷新，或者为你的控制台应用配置修改`flushInterval`和`exportInterval`：
+
+```
+'components' => [
+    'log' => [
+        'flushInterval' => 1,
+        'targets' =>[
+            [
+                'class' => 'yii\log\FileTarget',
+                'exportInterval' => 1,
+            ],
+        ], 
+    ],
+],
+```
+
+### 参考
+
+- 欲了解更多关于打日志的信息，参考[http://www.yiiframework.com/doc-2.0/guideruntime-logging.html](http://www.yiiframework.com/doc-2.0/guideruntime-logging.html)
+- *日志和使用上下文信息*小节
+
+## 分析Yii错误堆栈踪迹
+
+当发生错误时，Yii可以展示错误信息以及错误堆栈踪迹。当我们需要知道究竟是什么原因导致的错误时，堆栈踪迹非常有用。
+
+### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 配置一个数据库，并使用如下migration导入：
+
+```
+<?php
+use yii\db\Migration;
+class m160308_093234_create_article_table extends Migration
+{
+    public function up()
+    {
+        $this->createTable('{{%article}}', [
+            'id' => $this->primaryKey(),
+            'alias' => $this->string()->notNull(),
+            'title' => $this->string()->notNull(),
+            'text' => $this->text()->notNull(),
+        ]);
+    }
+    public function down()
+    {
+        $this->dropTable('{{%article}}');
+    }
+}
+```
+
+3. 使用Yii生成一个`Article`模型。
+
+### 如何做...
+
+执行如下步骤：
+
+1. 现在我们需要创建一些代码。创建`protected/controllers/ErrorController.php`：
+
+```
+<?php
+namespace app\controllers;
+use app\models\Article;
+use yii\web\Controller;
+class ErrorController extends Controller
+{
+    public function actionIndex()
+    {
+        $article = $this->findModel('php');
+        return $article->title;
+    }
+    private function findModel($alias)
+    {
+        return Article::findOne(['allas' => $alias]);
+    }
+}
+```
+
+2. 运行过先前的动作以后，我们应该能得到如下错误：
 
 ![](../images/a1204.png)
 
+3. 而且，堆栈踪迹展示了如下错误：
+
 ![](../images/a1205.png)
+
+### 工作原理...
+
+从错误消息中，我们知道在数据库中，我们没有列的别称，但是我们已经再代码别的地方用到了它。在我们的例子中，这很容易通过搜索所有的文件来找到，但是在一个大项目中，一个列可以存放在一个变量中。而且，we have everything to fix an error without leaving the screen where the stack trace is displayed。我们只是需要小心的读它。
+
+堆栈踪迹逆序地展示了一个调用链条，以产生错误的一个开始。一般来说，我们不需要看所有的踪迹来了解发生了什么。这个框架代码本身已经充分测试了，所以发生错误的可能性是比较小的。这就是为什么Yii展示应用的踪迹是打开的，而框架的踪迹是折叠的。
+
+因此，我们使用第一个展开的部分，并查找别称。找到以后，我们可以立刻告诉你它被用于`ErrorController.php`的第19行中。
+
+### 参考
+
+- 欲了解错误处理的信息，参考[http://www.yiiframework.com/doc-2.0/guide-runtime-handling-errors.html](http://www.yiiframework.com/doc-2.0/guide-runtime-handling-errors.html)
+- *日志和使用上下文信息*小节
+
+## 日志和使用上下文信息
+
+有时，一个错误信息不足以修复一个错误。例如，如果你使用最佳实践，并且使用所有可能的错误来开发和测试一个应用，你可以得到一个错误信息。但是，没有执行的上下文，它只是告诉你这里有一个错误，并不清楚究竟是什么导致的。
+
+在我们的例子中，我们将会使用一个非常简单并且代码编写很烂的动作，它会输出`Hello <username>!`，其中`username`直接从`$_GET`中获取。
+
+### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+
+### 如何做...
+
+执行如下步骤：
+
+1. 首先，我们需要一个控制器。因此，创建`protected/controllers/LogController.php`：
+
+```
+<?php
+namespace app\controllers;
+use yii\web\Controller;
+class LogController extends Controller
+{
+    public function actionIndex()
+    {
+        return 'Hello, ' . $_GET['username'];
+    }
+}
+```
+
+2. 现在，如果我们运行index动作，我们将会得到一个错误信息，`Undefined index: username`。配置logger将这样的错误写入到文件：
+
+```
+config/web.php
+```
+
+```
+'components'=>[
+    ...
+    'log' => [
+        'targets' => [
+            [
+                'class' => 'yii\log\FileTarget',
+                'levels' => ['error'],
+                'logFile' => '@runtime/logs/errors.log',
+            ],
+        ],
+    ],
+],
+```
+
+3. 在次运行index动作，并检查`runtime/logs/errors.log`。将会有如下日志信息：
+
+```
+2016-03-06 09:27:09 [127.0.0.1][-][-][error][yii\base\
+ErrorException:8] exception 'yii\base\ErrorException' with
+message 'Undefined index: username' in /controllers/
+LogController.php:11
+Stack trace:
+#0 /yii2/base/InlineAction.php(55): ::call_user_func_array()
+#1 /yii2/base/Controller.php(151): yii\base\
+InlineAction->runWithParams()
+#2 /yii2/base/Module.php(455): yii\base\Controller->runAction()
+#3 /yii2/web/Application.php(84): yii\base\Module->runAction()
+#4 /yii2/base/Application.php(375): yii\web\
+Application->handleRequest()
+#5 /web/index.php(12): yii\base\Application->run()
+#6 {main}
+2016-03-06 09:27:09 [127.0.0.1][-][-][info][application] $_GET
+= [
+    'r' => 'log/index'
+]
+$_COOKIE = [
+    '_csrf' => 'ca689043348e...a69ea:2:{i:0;s:...\"DSS...KJ\";}'
+    'PHPSESSID' => '30584oqhat4ek8b0hrqsapsbf4'
+]
+$_SERVER = [
+    'USER' => 'www-data'
+    'HOME' => '/var/www'
+    'FCGI_ROLE' => 'RESPONDER'
+    'QUERY_STRING' => 'r=log/index'
+    ...
+    'PHP_SELF' => '/index.php'
+    'REQUEST_TIME_FLOAT' => 1459934829.3067
+    'REQUEST_TIME' => 1459934829
+]
+```
+
+4. 现在我们可以将我们的应用给一个测试组并不时的检查错误日志。默认情况下，错误报告日志包含了`$_GET`、`$_POST`、`$_FILES`、`$_COOKIE`、`$_SESSION`、`$_SERVER`变量中的所有的值。如果你不希望展示所有的值，你可以指定一个自定义的变量列表：
+
+```
+'log' => [
+    'targets' => [
+        [
+        'class' => 'yii\log\FileTarget',
+        'levels' => ['error'],
+        'logVars' => ['_GET', '_POST'],
+        'logFile' => '@runtime/logs/errors.log',
+        ],
+    ],
+],
+```
+
+5. 在这个例子中，报告只包含`$_GET`和`$_POST`两个数组：
+
+```
+...
+2016-04-06 09:49:08 [127.0.0.1][-][-][info][application] $_GET
+= [ 'r' => 'log/index' ]
+```
+
+### 工作原理...
+
+Yii在打印错误日志信息时，添加了执行上下文和环境的完整信息。如果我们手动打一个日志消息，我们可能知道我们需要的信息，所以我们可以设置一些目标选项来我们真正需要的东西：
+
+```
+'log' => [
+    'targets' => [
+        [
+        'class' => 'yii\log\FileTarget',
+        'levels' => ['error'],
+        'logVars' => ['_GET', '_POST'],
+        'logFile' => '@runtime/logs/errors.log',
+        ],
+    ],
+],
+```
+
+先前的代码会将错误日志写到一个名叫errors的文件中，此外对于消息本身，它会将`$_GET`和`$_POST`变量的内容打到日志中，如果这两个变量不为空的话。
+
+### 参考
+
+- 欲了解更多关于日志过滤器和上下文信息，参考[http://www.yiiframework.com/doc-2.0/guide-runtime-logging.html](http://www.yiiframework.com/doc-2.0/guide-runtime-logging.html)
+- *使用不同的日志路由*小节
+
+## 展示自定义错误
+
+在
+
+
+
 
 ![](../images/a1206.png)
 
