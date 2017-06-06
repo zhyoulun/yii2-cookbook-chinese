@@ -403,21 +403,1397 @@ composer exec codecept build
 
 单元和综合测试检查我们项目的源代码。
 
+```
+<?php
+namespace tests\unit\models;
+use app\models\Post;
+use Codeception\Test\Unit;
+use tests\fixtures\PostFixture;
+class PostTest extends Unit
+{
+    /**
+     * @var \UnitTester
+     */
+    protected $tester;
+    public function _before()
+    {
+        $this->tester->haveFixtures([
+            'post' => [
+                'class' => PostFixture::className(),
+                'dataFile' => codecept_data_dir() . 'post.php'
+            ]
+        ]);
+    }
+    public function testValidateEmpty()
+    {
+        $model = new Post();
+        expect('model should not validate',
+            $model->validate())->false();
+        expect('title has error',
+            $model->errors)->hasKey('title');
+        expect('title has error',
+            $model->errors)->hasKey('text');
+    }
+    public function testValidateCorrect()
+    {
+        $model = new Post([
+            'title' => 'Other Post',
+            'text' => 'Other Post Text',
+        ]);
+        expect('model should validate',
+            $model->validate())->true();
+    }
+    public function testSave()
+    {
+        $model = new Post([
+            'title' => 'Test Post',
+            'text' => 'Test Post Text',
+        ]);
+        expect('model should save', $model->save())->true();
+        expect('title is correct', $model->title)->equals('Test Post');
+        expect('text is correct', $model->text)->equals('Test Post Text');
+        expect('status is draft',
+            $model->status)->equals(Post::STATUS_DRAFT);
+        expect('created_at is generated',
+            $model->created_at)->notEmpty();
+        expect('updated_at is generated',
+            $model->updated_at)->notEmpty();
+    }
+    public function testPublish()
+    {
+        $model = new Post(['status' => Post::STATUS_DRAFT]);
+        expect('post is drafted',
+            $model->status)->equals(Post::STATUS_DRAFT);
+        $model->publish();
+        expect('post is published',
+            $model->status)->equals(Post::STATUS_ACTIVE);
+    }
+    public function testAlreadyPublished()
+    {
+        $model = new Post(['status' => Post::STATUS_ACTIVE]);
+        $this->setExpectedException('\LogicException');
+        $model->publish();
+    }
+    public function testDraft()
+    {
+        $model = new Post(['status' => Post::STATUS_ACTIVE]);
+        expect('post is published',
+            $model->status)->equals(Post::STATUS_ACTIVE);
+        $model->draft();
+        expect('post is drafted',
+            $model->status)->equals(Post::STATUS_DRAFT);
+    }
+    public function testAlreadyDrafted()
+    {
+        $model = new Post(['status' => Post::STATUS_ACTIVE]);
+        $this->setExpectedException('\LogicException');
+        $model->publish();
+    }
+}
+```
+
+
+```
+<?php
+namespace tests\functional\admin;
+use app\models\Post;
+use FunctionalTester;
+use tests\fixtures\PostFixture;
+use yii\helpers\Url;
+class PostsCest
+{
+    function _before(FunctionalTester $I)
+    {
+        $I->haveFixtures([
+            'user' => [
+                'class' => PostFixture::className(),
+                'dataFile' => codecept_data_dir() . 'post.php'
+            ]
+        ]);
+    }
+    public function testIndex(FunctionalTester $I)
+    {
+        $I->amOnPage(['admin/posts/index']);
+        $I->see('Posts', 'h1');
+    }
+    public function testView(FunctionalTester $I)
+    {
+        $I->amOnPage(['admin/posts/view', 'id' => 1]);
+        $I->see('First Post', 'h1');
+    }
+    public function testCreateInvalid(FunctionalTester $I)
+    {
+        $I->amOnPage(['admin/posts/create']);
+        $I->see('Create', 'h1');
+        $I->submitForm('#post-form', [
+            'Post[title]' => '',
+            'Post[text]' => '',
+        ]);
+        $I->expectTo('see validation errors');
+        $I->see('Title cannot be blank.', '.help-block');
+        $I->see('Text cannot be blank.', '.help-block');
+    }
+    public function testCreateValid(FunctionalTester $I)
+    {
+        $I->amOnPage(['admin/posts/create']);
+        $I->see('Create', 'h1');
+        $I->submitForm('#post-form', [
+            'Post[title]' => 'Post Create Title',
+            'Post[text]' => 'Post Create Text',
+            'Post[status]' => 'Active',
+        ]);
+        $I->expectTo('see view page');
+        $I->see('Post Create Title', 'h1');
+    }
+    public function testUpdate(FunctionalTester $I)
+    {
+        // ...
+    }
+    public function testDelete(FunctionalTester $I)
+    {
+        $I->amOnPage(['/admin/posts/view', 'id' => 3]);
+        $I->see('Title For Deleting', 'h1');
+        $I->amGoingTo('delete item');
+        $I->sendAjaxPostRequest(Url::to(['/admin/posts/delete',
+            'id' => 3]));
+        $I->expectTo('see that post is deleted');
+        $I->dontSeeRecord(Post::className(), [
+            'title' => 'Title For Deleting',
+        ]);
+    }
+}
+```
+
+
+```
+<?php
+namespace tests\acceptance\admin;
+use AcceptanceTester;
+use tests\fixtures\PostFixture;
+use yii\helpers\Url;
+class PostsCest
+{
+    function _before(AcceptanceTester $I)
+    {
+        $I->haveFixtures([
+            'post' => [
+                'class' => PostFixture::className(),
+                'dataFile' => codecept_data_dir() . 'post.php'
+            ]
+        ]);
+    }
+    public function testIndex(AcceptanceTester $I)
+    {
+        $I->wantTo('ensure that post index page works');
+        $I->amOnPage(Url::to(['/admin/posts/index']));
+        $I->see('Posts', 'h1');
+    }
+    public function testView(AcceptanceTester $I)
+    {
+        $I->wantTo('ensure that post view page works');
+        $I->amOnPage(Url::to(['/admin/posts/view', 'id' => 1]));
+        $I->see('First Post', 'h1');
+    }
+    public function testCreate(AcceptanceTester $I)
+    {
+        $I->wantTo('ensure that post create page works');
+        $I->amOnPage(Url::to(['/admin/posts/create']));
+        $I->see('Create', 'h1');
+        $I->fillField('#post-title', 'Post Create Title');
+        $I->fillField('#post-text', 'Post Create Text');
+        $I->selectOption('#post-status', 'Active');
+        $I->click('submit-button');
+        $I->wait(3);
+        $I->expectTo('see view page');
+        $I->see('Post Create Title', 'h1');
+    }
+    public function testDelete(AcceptanceTester $I)
+    {
+        $I->amOnPage(Url::to(['/admin/posts/view', 'id' => 3]));
+        $I->see('Title For Deleting', 'h1');
+        $I->click('Delete');
+        $I->acceptPopup();
+        $I->wait(3);
+        $I->see('Posts', 'h1');
+    }
+}
+```
+
+
+```
+<?php
+namespace app\controllers\api;
+use yii\rest\ActiveController;
+class PostsController extends ActiveController
+{
+    public $modelClass = '\app\models\Post';
+}
+```
+
+
+
+```
+'components' => [
+    // ...
+    'urlManager' => [
+        'enablePrettyUrl' => true,
+        'showScriptName' => false,
+        'rules' => [
+            ['class' => 'yii\rest\UrlRule', 'controller' => 'api/posts'],
+        ],
+    ],
+],
+```
+
+```
+'components' => [
+    // ...
+    'urlManager' => [
+        'enablePrettyUrl' => true,
+        'showScriptName' => true,
+        'rules' => [
+            ['class' => 'yii\rest\UrlRule', 'controller' => 'api/posts'],
+        ],
+    ],
+],
+```
+
+
+
+```
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.php
+```
+
+
+
+```
+<?php
+namespace tests\api;
+use ApiTester;
+use tests\fixtures\PostFixture;
+use yii\helpers\Url;
+class PostsCest
+{
+    function _before(ApiTester $I)
+    {
+        $I->haveFixtures([
+            'post' => [
+                'class' => PostFixture::className(),
+                'dataFile' => codecept_data_dir() . 'post.php'
+            ]
+        ]);
+    }
+    public function testGetAll(ApiTester $I)
+    {
+        $I->sendGET('/api/posts');
+        $I->seeResponseCodeIs(200);
+        $I->seeResponseIsJson();
+        $I->seeResponseContainsJson([0 => ['title' => 'First Post']]);
+    }
+    public function testGetOne(ApiTester $I)
+    {
+        $I->sendGET('/api/posts/1');
+        $I->seeResponseCodeIs(200);
+        $I->seeResponseIsJson();
+        $I->seeResponseContainsJson(['title' => 'First Post']);
+    }
+    public function testGetNotFound(ApiTester $I)
+    {
+        $I->sendGET('/api/posts/100');
+        $I->seeResponseCodeIs(404);
+        $I->seeResponseIsJson();
+        $I->seeResponseContainsJson(['name' => 'Not Found']);
+    }
+    public function testCreate(ApiTester $I)
+    {
+        $I->sendPOST('/api/posts', [
+            'title' => 'Test Title',
+            'text' => 'Test Text',
+        ]);
+        $I->seeResponseCodeIs(201);
+        $I->seeResponseIsJson();
+        $I->seeResponseContainsJson(['title' => 'Test Title']);
+    }
+    public function testUpdate(ApiTester $I)
+    {
+        $I->sendPUT('/api/posts/2', [
+            'title' => 'New Title',
+        ]);
+        $I->seeResponseCodeIs(200);
+        $I->seeResponseIsJson();
+        $I->seeResponseContainsJson([
+            'title' => 'New Title',
+            'text' => 'Old Text For Updating',
+        ]);
+    }
+    public function testDelete(ApiTester $I)
+    {
+        $I->sendDELETE('/api/posts/3');
+        $I->seeResponseCodeIs(204);
+    }
+}
+```
+
+
+
+```
+{
+    "name": "book/cart",
+    "type": "yii2-extension",
+    "require": {
+        "yiisoft/yii2": "~2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "book\\cart\\": "src/",
+            "book\\cart\\tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "asset-installer-paths": {
+            "npm-asset-library": "vendor/npm",
+            "bower-asset-library": "vendor/bower"
+        }
+    }
+}
+```
+
+
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<phpunit bootstrap="./tests/bootstrap.php"
+         colors="true"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="Test Suite">
+            <directory>./tests</directory>
+        </testsuite>
+    </testsuites>
+    <filter>
+        <whitelist>
+            <directory suffix=".php">./src/</directory>
+        </whitelist>
+    </filter>
+</phpunit>
+```
+
+
+```
+<?php
+namespace book\cart;
+use book\cart\storage\StorageInterface;
+use yii\base\Component;
+use yii\base\InvalidConfigException;
+class Cart extends Component
+{
+    /**
+     * @var StorageInterface
+     */
+    private $_storage;
+    /**
+     * @var array
+     */
+    private $_items;
+    public function setStorage($storage)
+    {
+        if (is_array($storage)) {
+            $this->_storage = \Yii::createObject($storage);
+        } else {
+            $this->_storage = $storage;
+        }
+    }
+    public function add($id, $amount = 1)
+    {
+        $this->loadItems();
+        if (isset($this->_items[$id])) {
+            $this->_items[$id] += $amount;
+        } else {
+            $this->_items[$id] = $amount;
+        }
+        $this->saveItems();
+    }
+    public function set($id, $amount)
+    {
+        $this->loadItems();
+        $this->_items[$id] = $amount;
+        $this->saveItems();
+    }
+    public function remove($id)
+    {
+        $this->loadItems();
+        if (isset($this->_items[$id])) {
+            unset($this->_items[$id]);
+        }
+        $this->saveItems();
+    }
+    public function clear()
+    {
+        $this->loadItems();
+        $this->_items = [];
+        $this->saveItems();
+    }
+    public function getItems()
+    {
+        $this->loadItems();
+        return $this->_items;
+    }
+    public function getCount()
+    {
+        $this->loadItems();
+        return count($this->_items);
+    }
+    public function getAmount()
+    {
+        $this->loadItems();
+        return array_sum($this->_items);
+    }
+    private function loadItems()
+    {
+        if ($this->_storage === null) {
+            throw new InvalidConfigException('Storage must be set');
+        }
+        if ($this->_items === null) {
+            $this->_items = $this->_storage->load();
+        }
+    }
+    private function saveItems()
+    {
+        $this->_storage->save($this->_items);
+    }
+}
+```
+
+
+```
+<?php
+namespace book\cart\storage;
+interface StorageInterface
+{
+    /**
+     * @return array
+     */
+    public function load();
+    /**
+     * @param array $items
+     */
+    public function save(array $items);
+}
+```
+
+
+```
+<?php
+namespace book\cart\storage;
+use Yii;
+class SessionStorage implements StorageInterface
+{
+    public $sessionKey = 'cart';
+    public function load()
+    {
+        return Yii::$app->session->get($this->sessionKey, []);
+    }
+    public function save(array $items)
+    {
+        Yii::$app->session->set($this->sessionKey, $items);
+    }
+}}
+```
+
+```
+<?php
+defined('YII_DEBUG') or define('YII_DEBUG', true);
+defined('YII_ENV') or define('YII_ENV', 'test');
+require(__DIR__ . '/../vendor/autoload.php');
+require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
+```
+
+```
+<?php
+namespace book\cart\tests;
+use yii\di\Container;
+use yii\web\Application;
+abstract class TestCase extends \PHPUnit_Framework_TestCase
+{
+    protected function setUp()
+    {
+        parent::setUp();
+        $this->mockApplication();
+    }
+    protected function tearDown()
+    {
+        $this->destroyApplication();
+        parent::tearDown();
+    }
+    protected function mockApplication()
+    {
+        new Application([
+            'id' => 'testapp',
+            'basePath' => __DIR__,
+            'vendorPath' => dirname(__DIR__) . '/vendor',
+        ]);
+    }
+    protected function destroyApplication()
+    {
+        \Yii::$app = null;
+        \Yii::$container = new Container();
+    }
+}
+```
+
+```
+<?php
+namespace book\cart\tests\storage;
+use book\cart\storage\StorageInterface;
+class FakeStorage implements StorageInterface
+{
+    private $items = [];
+    public function load()
+    {
+        return $this->items;
+    }
+    public function save(array $items)
+    {
+        $this->items = $items;
+    }
+}
+```
+
+
+
+```
+<?php
+namespace book\cart\tests;
+use book\cart\Cart;
+use book\cart\tests\storage\FakeStorage;
+class CartTest extends TestCase
+{
+    /**
+     * @var Cart
+     */
+    private $cart;
+    public function setUp()
+    {
+        parent::setUp();
+        $this->cart = new Cart(['storage' => new
+        FakeStorage()]);
+    }
+    public function testEmpty()
+    {
+        $this->assertEquals([], $this->cart->getItems());
+        $this->assertEquals(0, $this->cart->getCount());
+        $this->assertEquals(0, $this->cart->getAmount());
+    }
+    public function testAdd()
+    {
+        $this->cart->add(5, 3);
+        $this->assertEquals([5 => 3], $this->cart->getItems());
+        $this->cart->add(7, 14);
+        $this->assertEquals([5 => 3, 7 => 14],
+            $this->cart->getItems());
+        $this->cart->add(5, 10);
+        $this->assertEquals([5 => 13, 7 => 14],
+            $this->cart->getItems());
+    }
+    public function testSet()
+    {
+        $this->cart->add(5, 3);
+        $this->cart->add(7, 14);
+        $this->cart->set(5, 12);
+        $this->assertEquals([5 => 12, 7 => 14],
+            $this->cart->getItems());
+    }
+    public function testRemove()
+    {
+        $this->cart->add(5, 3);
+        $this->cart->remove(5);
+        $this->assertEquals([], $this->cart->getItems());
+    }
+    public function testClear()
+    {
+        $this->cart->add(5, 3);
+        $this->cart->add(7, 14);
+        $this->cart->clear();
+        $this->assertEquals([], $this->cart->getItems());
+    }
+    public function testCount()
+    {
+        $this->cart->add(5, 3);
+        $this->assertEquals(1, $this->cart->getCount());
+        $this->cart->add(7, 14);
+        $this->assertEquals(2, $this->cart->getCount());
+    }
+    public function testAmount()
+    {
+        $this->cart->add(5, 3);
+        $this->assertEquals(3, $this->cart->getAmount());
+        $this->cart->add(7, 14);
+        $this->assertEquals(17, $this->cart->getAmount());
+    }
+    public function testEmptyStorage()
+    {
+        $cart = new Cart();
+        $this->setExpectedException('yii\base\InvalidConfigException');
+        $cart->getItems();
+    }
+}
+```
 
 
 
 
 
 
+```
+<?php
+namespace book\cart\tests\storage;
+use book\cart\storage\SessionStorage;
+use book\cart\tests\TestCase;
+class SessionStorageTest extends TestCase
+{
+    /**
+     * @var SessionStorage
+     */
+    private $storage;
+    public function setUp()
+    {
+        parent::setUp();
+        $this->storage = new SessionStorage(['key' => 'test']);
+    }
+    public function testEmpty()
+    {
+        $this->assertEquals([], $this->storage->load());
+    }
+    public function testStore()
+    {
+        $this->storage->save($items = [1 => 5, 6 => 12]);
+        $this->assertEquals($items, $this->storage->load());
+    }
+}
+```
+
+
+
+
+```
+class Cart extends Component
+{
+    …
+    public function remove($id)
+    {
+        $this->loadItems();
+        if (isset($this->_items[$id])) {
+            // unset($this->_items[$id]);
+        }
+        $this->saveItems();
+    }
+    ...
+}
+```
+
+
+```
+'components' => [
+    // …
+    'cart' => [
+        'class' => 'book\cart\Cart',
+        'storage' => [
+            'class' => 'book\cart\storage\SessionStorage',
+        ],
+    ],
+],
+```
+
+
+
+```
+$config = [
+    'id' => 'basic',
+    'basePath' => dirname(__DIR__),
+    'bootstrap' => ['log'],
+    'aliases' => [
+        '@book' => dirname(__DIR__) . '/book',
+    ],
+    'components' => [
+        'cart' => [
+            'class' => 'book\cart\Cart',
+            'storage' => [
+            'class' => 'book\cart\storage\SessionStorage',
+            ],
+        ],
+        // ...
+    ],
+]
+```
 
 
 
 
 
+```
+<?xml version="1.0" encoding="utf-8"?>
+<phpunit bootstrap="./tests/bootstrap.php"
+         colors="true"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="Test Suite">
+            <directory>./tests</directory>
+        </testsuite>
+    </testsuites>
+    <filter>
+        <whitelist>
+            <directory suffix=".php">./src/</directory>
+        </whitelist>
+    </filter>
+</phpunit>
+```
 
 
 
 
+```
+<?php
+defined('YII_DEBUG') or define('YII_DEBUG', true);
+defined('YII_ENV') or define('YII_ENV', 'test');
+require(__DIR__ . '/../vendor/autoload.php');
+require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
+```
+
+
+```
+class MyTest extends TestCase
+{
+    public function testSomeFunction()
+    {
+        $this->assertTrue(true);
+    }
+}
+```
+
+```
+$this->assertEqual('Alex', $model->name);
+$this->assertTrue($model->validate());
+$this->assertFalse($model->save());
+$this->assertCount(3, $items);
+$this->assertArrayHasKey('username', $model->getErrors());
+$this->assertNotNull($model->author);
+$this->assertInstanceOf('app\models\User', $model->author);
+```
+
+```
+<?php
+namespace book\cart\tests;
+use yii\di\Container;
+use yii\web\Application;
+abstract class TestCase extends \PHPUnit_Framework_TestCase
+{
+    protected function setUp()
+    {
+        parent::setUp();
+        $this->mockApplication();
+    }
+    protected function tearDown()
+    {
+        $this->destroyApplication();
+        parent::tearDown();
+    }
+    protected function mockApplication()
+    {
+        new Application([
+            'id' => 'testapp',
+            'basePath' => __DIR__,
+            'vendorPath' => dirname(__DIR__) . '/vendor',
+        ]);
+    }
+    protected function destroyApplication()
+    {
+        \Yii::$app = null;
+        \Yii::$container = new Container();
+    }
+}
+```
+
+
+## 使用Atoum测试
+
+```
+{
+    "name": "book/cart",
+    "type": "yii2-extension",
+    "require": {
+        "yiisoft/yii2": "~2.0"
+    },
+    "require-dev": {
+        "atoum/atoum": "^2.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "book\\cart\\": "src/",
+            "book\\cart\\tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "asset-installer-paths": {
+            "npm-asset-library": "vendor/npm",
+            "bower-asset-library": "vendor/bower"
+        }
+    }
+}
+```
+
+
+```
+/vendor
+/composer.lock
+```
+
+```
+composer install
+```
+
+```
+<?php
+defined('YII_DEBUG') or define('YII_DEBUG', true);
+defined('YII_ENV') or define('YII_ENV', 'test');
+require(__DIR__ . '/../vendor/autoload.php');
+require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
+```
+
+```
+<?php
+namespace book\cart\tests;
+use yii\di\Container;
+use yii\console\Application;
+use mageekguy\atoum\test;
+abstract class TestCase extends test
+{
+    public function beforeTestMethod($method)
+    {
+        parent::beforeTestMethod($method);
+        $this->mockApplication();
+    }
+    public function afterTestMethod($method)
+    {
+        $this->destroyApplication();
+        parent::afterTestMethod($method);
+    }
+    protected function mockApplication()
+    {
+        new Application([
+            'id' => 'testapp',
+            'basePath' => __DIR__,
+            'vendorPath' => dirname(__DIR__) . '/vendor',
+            'components' => [
+                'session' => [
+                    'class' => 'yii\web\Session',
+                ],
+            ]
+        ]);
+    }
+    protected function destroyApplication()
+    {
+        \Yii::$app = null;
+        \Yii::$container = new Container();
+    }
+}
+```
+
+```
+<?php
+namespace book\cart\tests;
+use book\cart\storage\StorageInterface;
+class FakeStorage implements StorageInterface
+{
+    private $items = [];
+    public function load()
+    {
+        return $this->items;
+    }
+    public function save(array $items)
+    {
+        $this->items = $items;
+    }
+}
+```
+
+```
+<?php
+namespace book\cart\tests\units;
+use book\cart\tests\FakeStorage;
+use book\cart\Cart as TestedCart;
+use book\cart\tests\TestCase;
+class Cart extends TestCase
+{
+    /**
+     * @var TestedCart
+     */
+    private $cart;
+    public function beforeTestMethod($method)
+    {
+        parent::beforeTestMethod($method);
+        $this->cart = new TestedCart(['storage' => new
+        FakeStorage()]);
+    }
+    public function testEmpty()
+    {
+        $this->array($this->cart->getItems())->isEqualTo([]);
+        $this->integer($this->cart->getCount())->isEqualTo(0);
+        $this->integer($this->cart->getAmount())->isEqualTo(0);
+    }
+    public function testAdd()
+    {
+        $this->cart->add(5, 3);
+        $this->array($this->cart->getItems())->isEqualTo([5 =>
+            3]);
+        $this->cart->add(7, 14);
+        $this->array($this->cart->getItems())->isEqualTo([5 =>
+            3, 7 => 14]);
+        $this->cart->add(5, 10);
+        $this->array($this->cart->getItems())->isEqualTo([5 =>
+            13, 7 => 14]);
+    }
+    public function testSet()
+    {
+        $this->cart->add(5, 3);
+        $this->cart->add(7, 14);
+        $this->cart->set(5, 12);
+        $this->array($this->cart->getItems())->isEqualTo([5 =>
+            12, 7 => 14]);
+    }
+    public function testRemove()
+    {
+        $this->cart->add(5, 3);
+        $this->cart->remove(5);
+        $this->array($this->cart->getItems())->isEqualTo([]);
+    }
+    public function testClear()
+    {
+        $this->cart->add(5, 3);
+        $this->cart->add(7, 14);
+        $this->cart->clear();
+        $this->array($this->cart->getItems())->isEqualTo([]);
+    }
+    public function testCount()
+    {
+        $this->cart->add(5, 3);
+        $this->integer($this->cart->getCount())->isEqualTo(1);
+        $this->cart->add(7, 14);
+        $this->integer($this->cart->getCount())->isEqualTo(2);
+    }
+    public function testAmount()
+    {
+        $this->cart->add(5, 3);
+        $this->integer($this->cart->getAmount())->isEqualTo(3);
+        $this->cart->add(7, 14);
+        $this->integer($this->cart->getAmount())->isEqualTo(17);
+    }
+    public function testEmptyStorage()
+    {
+        $cart = new TestedCart();
+        $this->exception(function () use ($cart) {
+            $cart->getItems();
+        })->hasMessage('Storage must be set');
+    }
+}
+```
+
+
+
+```
+<?php
+namespace book\cart\tests\units\storage;
+use book\cart\storage\SessionStorage as TestedStorage;
+use book\cart\tests\TestCase;
+class SessionStorage extends TestCase
+{
+    /**
+     * @var TestedStorage
+     */
+    private $storage;
+    public function beforeTestMethod($method)
+    {
+        parent::beforeTestMethod($method);
+        $this->storage = new TestedStorage(['key' => 'test']);
+    }
+    public function testEmpty()
+    {
+        $this
+            ->given($storage = $this->storage)
+            ->then
+            ->array($storage->load())
+            ->isEqualTo([]);
+    }
+    public function testStore()
+    {
+        $this
+            ->given($storage = $this->storage)
+            ->and($storage->save($items = [1 => 5, 6 => 12]))
+            ->then
+            ->array($this->storage->load())
+            ->isEqualTo($items)
+        ;
+    }
+}
+```
+
+
+
+
+```
+class Cart extends Component
+{
+    ...
+    public function remove($id)
+    {
+        $this->loadItems();
+        if (isset($this->_items[$id])) {
+            // unset($this->_items[$id]);
+        }
+        $this->saveItems();
+    }
+    ...
+}
+```
+
+
+
+
+
+```
+<?php
+use \mageekguy\atoum;
+/** @var atoum\scripts\runner $script */
+$report = $script->addDefaultReport();
+$coverageField = new atoum\report\fields\runner\coverage\
+html('Cart', __DIR__ . '/tests/coverage');
+$report->addField($coverageField);
+```
+
+```
+vendor/bin/atoum -d tests/units -bf tests/bootstrap.php -c coverage.php
+```
+
+
+```
+public function testSome()
+{
+    $this
+        ->given($cart = new TestedCart())
+        ->and($cart->add(5, 13))
+        ->then
+        ->sizeof($cart->getItems())
+        ->isEqualTo(1)
+        ->array($cart->getItems())
+        ->isEqualTo([5 => 3])
+        ->integer($cart->getCount())
+        ->isEqualTo(1)
+        ->integer($cart->getAmount())
+        ->isEqualTo(3);
+}
+```
+
+
+
+```
+public function testSome()
+{
+    $cart = new TestedCart();
+    $cart->add(5, 3);
+    $this->array($cart->getItems())->isEqualTo([5 => 3])
+        ->integer($cart->getCount())->isEqualTo(1)
+        ->integer($cart->getAmount())->isEqualTo(3);
+}
+```
+
+
+```
+{
+    "name": "book/cart",
+    "type": "yii2-extension",
+    "require": {
+        "yiisoft/yii2": "~2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.*",
+        "behat/behat": "^3.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "book\\cart\\": "src/",
+            "book\\cart\\features\\": "features/"
+        }
+    },
+    "extra": {
+        "asset-installer-paths": {
+            "npm-asset-library": "vendor/npm",
+            "bower-asset-library": "vendor/bower"
+        }
+    }
+}
+```
+
+
+```
+<?php
+defined('YII_DEBUG') or define('YII_DEBUG', true);
+defined('YII_ENV') or define('YII_ENV', 'test');
+require_once __DIR__ . '/../../vendor/yiisoft/yii2/Yii.php';
+```
+
+
+
+```
+Feature: Shopping cart
+    In order to buy products
+    As a customer
+    I need to be able to put interesting products into a cart
+
+    Scenario: Checking empty cart
+        Given there is a clean cart
+        Then I should have 0 products
+        Then I should have 0 product
+        And the overall cart amount should be 0
+
+    Scenario: Adding products to the cart
+        Given there is a clean cart
+        When I add 3 pieces of 5 product
+        Then I should have 3 pieces of 5 product
+        And I should have 1 product
+        And the overall cart amount should be 3
+        When I add 14 pieces of 7 product
+        Then I should have 3 pieces of 5 product
+        And I should have 14 pieces of 7 product
+        And I should have 2 products
+        And the overall cart amount should be 17
+        When I add 10 pieces of 5 product
+        Then I should have 13 pieces of 5 product
+        And I should have 14 pieces of 7 product
+        And I should have 2 products
+        And the overall cart amount should be 27
+
+    Scenario: Change product count in the cart
+        Given there is a cart with 5 pieces of 7 product
+        When I set 3 pieces for 7 product
+        Then I should have 3 pieces of 7 product
+
+    Scenario: Remove products from the cart
+        Given there is a cart with 5 pieces of 7 product
+        When I add 14 pieces of 7 product
+        And I clear cart
+        Then I should have empty cart
+```
+
+
+
+
+```
+Feature: Shopping cart storage
+    I need to be able to put items into a storage
+    Scenario: Checking empty storage
+        Given there is a clean storage
+        Then I should have empty storage
+
+    Scenario: Save items into storage
+        Given there is a clean storage
+        When I save 3 pieces of 7 product to the storage
+        Then I should have 3 pieces of 7 product in the storage
+```
+
+```
+<?php
+use Behat\Behat\Context\SnippetAcceptingContext;
+use book\cart\Cart;
+use book\cart\features\bootstrap\storage\FakeStorage;
+use yii\di\Container;
+use yii\web\Application;
+require_once __DIR__ . '/bootstrap.php';
+class CartContext implements SnippetAcceptingContext
+{
+    /**
+     * @var Cart
+     * */
+    private $cart;
+    /**
+     * @Given there is a clean cart
+     */
+    public function thereIsACleanCart()
+    {
+        $this->resetCart();
+    }
+    /**
+     * @Given there is a cart with :pieces of :product product
+     */
+    public function thereIsAWhichCostsPs($product, $amount)
+    {
+        $this->resetCart();
+        $this->cart->set($product, floatval($amount));
+    }
+    /**
+     * @When I add :pieces of :product
+     */
+    public function iAddTheToTheCart($product, $pieces)
+    {
+        $this->cart->add($product, $pieces);
+    }
+    /**
+     * @When I set :pieces for :arg2 product
+     */
+    public function iSetPiecesForProduct($pieces, $product)
+    {
+        $this->cart->set($product, $pieces);
+    }
+    /**
+     * @When I clear cart
+     */
+    public function iClearCart()
+    {
+        $this->cart->clear();
+    }
+    /**
+     * @Then I should have empty cart
+     */
+    public function iShouldHaveEmptyCart()
+    {
+        PHPUnit_Framework_Assert::assertEquals(
+            0,
+            $this->cart->getCount()
+        );
+    }
+    /**
+     * @Then I should have :count product(s)
+     */
+    public function iShouldHaveProductInTheCart($count)
+    {
+        PHPUnit_Framework_Assert::assertEquals(
+            intval($count),
+            $this->cart->getCount()
+        );
+    }
+    /**
+     * @Then the overall cart amount should be :amount
+     */
+    public function theOverallCartPriceShouldBePs($amount)
+    {
+        PHPUnit_Framework_Assert::assertSame(
+            intval($amount),
+            $this->cart->getAmount()
+        );
+    }
+    /**
+     * @Then I should have :pieces of :product
+     */
+    public function iShouldHavePiecesOfProduct($pieces,
+                                               $product)
+    {
+        PHPUnit_Framework_Assert::assertArraySubset(
+            [intval($product) => intval($pieces)],
+            $this->cart->getItems()
+        );
+    }
+    private function resetCart()
+    {
+        $this->cart = new Cart(['storage' => new
+        FakeStorage()]);
+    }
+}
+```
+
+```
+<?php
+use Behat\Behat\Context\SnippetAcceptingContext;
+use book\cart\Cart;
+use book\cart\features\bootstrap\storage\FakeStorage;
+use book\cart\storage\SessionStorage;
+use yii\di\Container;
+use yii\web\Application;
+require_once __DIR__ . '/bootstrap.php';
+class StorageContext implements SnippetAcceptingContext
+{
+    /**
+     * @var SessionStorage
+     * */
+    private $storage;
+    /**
+     * @Given there is a clean storage
+     */
+    public function thereIsACleanStorage()
+    {
+        $this->mockApplication();
+        $this->storage = new SessionStorage(['key' => 'test']);
+    }
+    /**
+     * @When I save :pieces of :product to the storage
+     */
+    public function iSavePiecesOfProductToTheStorage($pieces,
+                                                     $product)
+    {
+        $this->storage->save([$product => $pieces]);
+    }
+    /**
+     * @Then I should have empty storage
+     */
+    public function iShouldHaveEmptyStorage()
+    {
+        PHPUnit_Framework_Assert::assertCount(
+            0,
+            $this->storage->load()
+        );
+    }
+    /**
+     * @Then I should have :pieces of :product in the storage
+     */
+    public function
+    iShouldHavePiecesOfProductInTheStorage($pieces, $product)
+    {
+        PHPUnit_Framework_Assert::assertArraySubset(
+            [intval($product) => intval($pieces)],
+            $this->storage->load()
+        );
+    }
+    private function mockApplication()
+    {
+        Yii::$container = new Container();
+        new Application([
+            'id' => 'testapp',
+            'basePath' => __DIR__,
+            'vendorPath' => __DIR__ . '/../../vendor',
+        ]);
+    }
+}
+```
+
+
+
+
+```
+<?php
+namespace book\cart\features\bootstrap\storage;
+use book\cart\storage\StorageInterface;
+class FakeStorage implements StorageInterface
+{
+    private $items = [];
+    public function load()
+    {
+        return $this->items;
+    }
+    public function save(array $items)
+    {
+        $this->items = $items;
+    }
+}
+```
 
 
 
