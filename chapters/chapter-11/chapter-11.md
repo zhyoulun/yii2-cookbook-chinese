@@ -403,6 +403,14 @@ composer exec codecept build
 
 单元和综合测试检查我们项目的源代码。
 
+单元测试只检查当前的类，或者他们的方法和其它类无关，以及和其它资源也无关，比如数据库、文件等等。
+
+综合测试检查你的类和其它类以及资源综合在一起时的表现。
+
+Yii2中的ActiveRecord模型总是使用数据库加载表schema，所以我们必须创建一个真正的测试数据库，并且我们的测试将会是综合的。
+
+1. 写测试用于检查模型的校验、保存，并修改它的状态：
+
 ```
 <?php
 namespace tests\unit\models;
@@ -492,6 +500,31 @@ class PostTest extends Unit
 }
 ```
 
+2. 运行测试：
+
+```
+composer exec codecept run unit
+```
+
+3. 现在查看结果：
+
+![](../images/a1105.png)
+
+完成了。如果你故意或者偶然破坏了任何模型的方法，你将会看到一个坏的测试。
+
+#### 写功能测试
+
+功能测试检查你的应用是否正常工作。这个套件会准备`$_GET`、`$_POST`以及其它请求变量，并调用`Application::handleRequest`方法。它帮助你测试控制器以及响应，而且这不需要运行真实服务器。
+
+现在我们可以为我们的admin CRUD写测试：
+
+1. 生成一个新的测试类：
+
+```
+codecept generate:cest functional admin/Posts
+```
+
+2. 在生成的文件中修正命名空间，并写自己的测试：
 
 ```
 <?php
@@ -564,6 +597,22 @@ class PostsCest
 }
 ```
 
+3. 运行测试命令：
+
+```
+composer exec codecept run functional
+```
+
+4. 现在可以查看到结果：
+
+![](../images/a1106.png)
+
+所有的测试是通过的。在其它例子中，你可以在`tests/_output`文件夹中看到失败测试的测试页面的截图：
+
+#### 写验收测试
+
+1. 验收测试员点击测试服务器中真正的网站，而不是只调用`Application::handleRequest`方法。高级验收测试看起来像中级功能测试，但是在Selenium中它可以检查在真实浏览器中的Javascript行为。
+2. 你必须在`tests/acceptance`文件夹下获取如下类：
 
 ```
 <?php
@@ -619,6 +668,31 @@ class PostsCest
 }
 ```
 
+不要忘记调用`wait`方法，用于等待页面被打开或者重新加载。
+
+3. 在一个新的终端中运行PHP测试服务器：
+
+```
+tests/bin/yii serve
+```
+
+4. 运行验收测试：
+
+```
+composer exec codecept run acceptance
+```
+
+5. 查看结果：
+
+![](../images/a1107.png)
+
+Selenium将会启动Firefox web浏览器，并执行我们的测试命令。
+
+#### 创建API测试套件
+
+除了单元、功能以及验收套件，Codeception可以创建特殊的测试套件。例如，我们可以创建用于支持XML和JSON解析的API测试。
+
+1. 为`Post`模型创建REST API控制器`controllers/api/PostsController.php`
 
 ```
 <?php
@@ -630,7 +704,7 @@ class PostsController extends ActiveController
 }
 ```
 
-
+2. 在`config/web.php`中为`UrlManager`组件添加REST路由：
 
 ```
 'components' => [
@@ -644,6 +718,8 @@ class PostsController extends ActiveController
     ],
 ],
 ```
+
+
 
 ```
 'components' => [
@@ -1797,11 +1873,11 @@ class FakeStorage implements StorageInterface
 
 
 
-![](../images/a1105.png)
 
-![](../images/a1106.png)
 
-![](../images/a1107.png)
+
+
+
 
 ![](../images/a1108.png)
 
