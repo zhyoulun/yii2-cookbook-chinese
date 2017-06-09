@@ -1068,7 +1068,7 @@ class Cart extends Component
 }
 ```
 
-
+2. 在`src/storage`子文件夹中创建`StorageInterface`接口：
 
 ```
 <?php
@@ -1086,6 +1086,7 @@ interface StorageInterface
 }
 ```
 
+以及`SessionStorage`类：
 
 ```
 <?php
@@ -1105,6 +1106,29 @@ class SessionStorage implements StorageInterface
 }}
 ```
 
+3. 现在我们可以得到如下结构：
+
+```
+book
+└── cart
+    ├── src
+    │ ├── storage
+    │ │ ├── SessionStorage.php
+    │ │ └── StorageInterface.php
+    │ └── Cart.php
+    ├── tests
+    ├── .gitignore
+    ├── composer.json
+    ├── phpunit.xml.dist
+    └── vendor
+```
+
+#### 写扩展测试
+
+为了实施这个扩展测试，执行如下步骤：
+
+1. 为PHPUnit添加`book/cart/tests/bootstrap.php`入口：
+
 ```
 <?php
 defined('YII_DEBUG') or define('YII_DEBUG', true);
@@ -1112,6 +1136,8 @@ defined('YII_ENV') or define('YII_ENV', 'test');
 require(__DIR__ . '/../vendor/autoload.php');
 require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
 ```
+
+2. 在每一个测试前，通过初始化Yii应用创建一个测试基类，然后在销毁应用时释放：
 
 ```
 <?php
@@ -1146,6 +1172,8 @@ abstract class TestCase extends \PHPUnit_Framework_TestCase
 }
 ```
 
+3. 添加一个基于内存的干净的fake类，这个类继承`StorageInterface`接口：
+
 ```
 <?php
 namespace book\cart\tests\storage;
@@ -1164,7 +1192,9 @@ class FakeStorage implements StorageInterface
 }
 ```
 
+它将会存储一些条目到一个私有变量中，而不是一个真正的session中。它允许我们能独立运行这个测试（不需要真正的存储驱动），并提高测试性能。
 
+4. 添加`CartTest`类：
 
 ```
 <?php
@@ -1244,10 +1274,7 @@ class CartTest extends TestCase
 }
 ```
 
-
-
-
-
+5. 添加一个独立的测试，用于检查`SessionStorage`类：
 
 ```
 <?php
@@ -1277,8 +1304,50 @@ class SessionStorageTest extends TestCase
 }
 ```
 
+6. 现在我们可以得到如下结构：
 
+```
+book
+└── cart
+    ├── src
+    │ ├── storage
+    │ │ ├── SessionStorage.php
+    │ │ └── StorageInterface.php
+    │ └── Cart.php
+    ├── tests
+    │ ├── storage
+    │ │ ├── FakeStorage.php
+    │ │ └── SessionStorageTest.php
+    │ ├── bootstrap.php
+    │ ├── CartTest.php
+    │ └── TestCase.php
+    ├── .gitignore
+    ├── composer.json
+    ├── phpunit.xml.dist
+    └── vendor
+```
 
+#### 运行测试
+
+在使用`composer install`命令安装所有的依赖时，Composer包管理器安装了`PHPUnit`包到`vendor`文件中，并将可执行的文件`phpunit`放在了`vendor/bin`子文件夹中。
+
+现在我们可以运行如下脚本：
+
+```
+cd book/cart
+vendor/bin/phpunit
+```
+
+我们可以看到如下测试报告：
+
+```
+PHPUnit 4.8.26 by Sebastian Bergmann and contributors.
+..........
+Time: 906 ms, Memory: 11.50MB
+OK (10 tests, 16 assertions)
+```
+
+每一个点都对应了一次成功的测试。
 
 ```
 class Cart extends Component
@@ -1307,6 +1376,43 @@ class Cart extends Component
         ],
     ],
 ],
+```
+
+再次运行测试：
+
+```
+PHPUnit 4.8.26 by Sebastian Bergmann and contributors.
+...F......
+Time: 862 ms, Memory: 11.75MB
+There was 1 failure:
+1) book\cart\tests\CartTest::testRemove
+Failed asserting that two arrays are equal.
+--- Expected
++++ Actual
+@@ @@
+Array (
++ 5 => 3
+)
+/book/cart/tests/CartTest.php:52
+FAILURES!
+Tests: 10, Assertions: 16, Failures: 1
+```
+
+在这个例子中，我们看到了一次失败（用F标记），以及一次错误报告。
+
+#### 分析代码覆盖率
+
+你必须安装XDebug PHP扩展，[https://xdebug.org](https://xdebug.org)。例如，在Ubuntu或者Debian上，你可以在终端中，输入如下命令：
+
+```
+sudo apt-get install php5-xdebug
+```
+
+在Windows上，你必须打开`php.ini`文件，并添加自定义代码到PHP安装路径中：
+
+```
+[xdebug]
+zend_extension_ts=C:/php/ext/php_xdebug.dll
 ```
 
 
