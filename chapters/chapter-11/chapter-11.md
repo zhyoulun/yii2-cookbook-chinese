@@ -704,7 +704,7 @@ class PostsController extends ActiveController
 }
 ```
 
-2. 在`config/web.php`中为`UrlManager`组件添加REST路由：
+2. 在`config/web.php`中为`urlManager`组件添加REST路由：
 
 ```
 'components' => [
@@ -719,7 +719,7 @@ class PostsController extends ActiveController
 ],
 ```
 
-
+并在`config/test.php`文件中设置一些配置（启用`showScriptName`选项）：
 
 ```
 'components' => [
@@ -734,7 +734,7 @@ class PostsController extends ActiveController
 ],
 ```
 
-
+3. 给`web/.htaccess`文件添加如下内容：
 
 ```
 RewriteEngine On
@@ -743,7 +743,38 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.php
 ```
 
+4. 检查`api/posts`控制器是否工作：
 
+![](../images/a1108.png)
+
+5. 使用REST模块创建API测试套件`tests/api.suite.yml`配置文件：
+
+```
+class_name: ApiTester
+modules:
+    enabled:
+        - REST:
+            depends: PhpBrowser
+            url: 'http://127.0.0.1:8080/index-test.php'
+            part: [json]
+        - Yii2:
+            part: [orm, fixtures]
+            entryScript: index-test.php
+```
+
+现在重新编译testers：
+
+```
+composer exec codecept build
+```
+
+6. 创建`tests/api`目录，并生成新的测试类：
+
+```
+composer exec codecept generate:cest api Posts
+```
+
+7. 为你的REST-API写测试：
 
 ```
 <?php
@@ -813,7 +844,64 @@ class PostsCest
 }
 ```
 
+8. 运行应用服务器：
 
+```
+tests/bin yii serve
+```
+
+9. 运行API测试：
+
+```
+composer exec codecept run api
+```
+
+现在可以看到结果：
+
+![](../images/a1109.png)
+
+所有的测试通过了，我们的API能正常工作。
+
+### 工作原理...
+
+Codeception是一个高级测试框架，基于PHPUnit包可以提供用于写单元、综合、功能和验收测试。
+
+我们可以使用Yii2的内置Codeception，它允许我们加载fixtures，使用models，以及Yii框架的其它东西。
+
+### 参考
+
+- 欲了解更多信息，参考：
+    + [http://codeception.com/docs/01-Introduction](http://codeception.com/docs/01-Introduction)
+    + [https://phpunit.de/manual/5.2/en/installation.html](https://phpunit.de/manual/5.2/en/installation.html)
+- 基础或者高级应用中的`tests/README.md`文件：
+    + [https://github.com/yiisoft/yii2-app-basic/blob/master/tests/README.md](https://github.com/yiisoft/yii2-app-basic/blob/master/tests/README.md)
+    + [https://github.com/yiisoft/yii2-app-advanced/blob/master/tests/README.md](https://github.com/yiisoft/yii2-app-advanced/blob/master/tests/README.md)
+- *使用PHPUnit做单元测试*小节
+
+## 使用PHPUnit做单元测试
+
+PHPUnit是最流行的PHP测试框架。配置是使用非常简单。此外，这个框架支持代码覆盖率报告，还有需要额外的插件。上一小节中的Codeception使用PHPUnit来工作，并写单元测试。在这个小节中，我们将会使用PHPUnit测试创建一个购物车扩展示例。
+
+### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+### 如何做...
+
+首先，我们必须为我们的扩展创建一个新的空目录。
+
+#### 准备扩展结构
+
+1. 首先，为你的扩展创建目录结构：
+
+```
+book
+└── cart
+    ├── src
+    └── tests
+```
+
+为了将这个扩展做为一个Composer包，准备`book/cart/composer.json`：
 
 ```
 {
@@ -840,7 +928,14 @@ class PostsCest
 }
 ```
 
+2. 在`book/cart/.gitignore`文件中添加如下内容：
 
+```
+/vendor
+/composer.lock
+```
+
+3. 添加如下内容到PHPUnit默认配置文件中`book/cart/phpunit.xml.dist`：
 
 ```
 <?xml version="1.0" encoding="utf-8"?>
@@ -863,6 +958,30 @@ class PostsCest
 </phpunit>
 ```
 
+4. 安装扩展的所有依赖：
+
+```
+composer install
+```
+
+5. 现在我们可以获取如下结构：
+
+```
+book
+└── cart
+    ├── src
+    ├── tests
+    ├── .gitignore
+    ├── composer.json
+    ├── phpunit.xml.dist
+    └── vendor
+```
+
+#### 写扩展代码
+
+为了写扩展代码，执行如下步骤：
+
+1. 在`src`文件夹中，创建`book\cart\Cart`类：
 
 ```
 <?php
@@ -948,6 +1067,7 @@ class Cart extends Component
     }
 }
 ```
+
 
 
 ```
@@ -1879,9 +1999,9 @@ class FakeStorage implements StorageInterface
 
 
 
-![](../images/a1108.png)
 
-![](../images/a1109.png)
+
+
 
 ![](../images/a1110.png)
 
