@@ -1415,7 +1415,52 @@ sudo apt-get install php5-xdebug
 zend_extension_ts=C:/php/ext/php_xdebug.dll
 ```
 
+或者，如果你使用非线程安全的版本，输入如下内容：
 
+```
+[xdebug]
+zend_extension=C:/php/ext/php_xdebug.dll
+```
+
+安装过XDebug以后，使用`--coverage-html`标志再次运行测试，并指定一个报告路径：
+
+```
+vendor/bin/phpunit --coverage-html tests/_output
+```
+
+在浏览器中打开`tests/_output/index.html`，你将会看到每一个路径和类的一个明确的覆盖率报告：
+
+![](../images/a1110.png)
+
+你可以点击任何类，并分析代码的哪一行在测试期间还没有被执行。例如，打开`Cart`类报告：
+
+![](../images/a1111.png)
+
+在我们的例子中，我们忘记测试从数组配置中创建storage。
+
+#### 组件的使用
+
+在Packagist上发布扩展后，我们可以安装一个one-to-any项目：
+
+```
+composer require book/cart
+```
+
+此外，在应用的配置文件中激活组件：
+
+```
+'components' => [
+    // …
+    'cart' => [
+        'class' => 'book\cart\Cart',
+        'storage' => [
+            'class' => 'book\cart\storage\SessionStorage',
+        ],
+    ],
+],
+```
+
+另外一种方法，不需要在Packagist上发布扩展，我们必须设置`@book` alias，从而激活正确的类自动加载：
 
 ```
 $config = [
@@ -1437,9 +1482,11 @@ $config = [
 ]
 ```
 
+无论如何，我们可以在我们的项目中以`Yii::$app->cart`组件的方式使用它：
 
+### 工作原理...
 
-
+在创建我们自己的测试前，你必须创建一个子目录，并在你的项目的根目录中添加`phpinit.xml`或者`phpunit.xml.dist`文件：
 
 ```
 <?xml version="1.0" encoding="utf-8"?>
@@ -1462,8 +1509,7 @@ $config = [
 </phpunit>
 ```
 
-
-
+如果第二个文件在工作目录中不存在，PHPUnit从第二个文件中加载配置。此外，你可以通过创建`bootstrap.php`文件来初始化autoloader和你框架的环境：
 
 ```
 <?php
@@ -1473,6 +1519,9 @@ require(__DIR__ . '/../vendor/autoload.php');
 require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
 ```
 
+最后，你可以通过Composer安装PHPUnit（局部或者全局），并在有XML配置文件的目录中使用`phpunit`控制台命令。
+
+PHPUnit扫描测试文件，并找到一`*Test.php`为后缀的文件。所有的测试类必须继承`PHPUnit_Framework_TestCase`类，并包含以`test*`为前缀的公共方法：
 
 ```
 class MyTest extends TestCase
@@ -1484,6 +1533,8 @@ class MyTest extends TestCase
 }
 ```
 
+在你的测试中，你可以用任何已有的`assert*`方法：
+
 ```
 $this->assertEqual('Alex', $model->name);
 $this->assertTrue($model->validate());
@@ -1493,6 +1544,10 @@ $this->assertArrayHasKey('username', $model->getErrors());
 $this->assertNotNull($model->author);
 $this->assertInstanceOf('app\models\User', $model->author);
 ```
+
+此外，你可以复写`setUp()`或者`tearDown()`方法，用来添加表达式，它将在每一个测试方法之前或者之后运行。
+
+例如，你可以通过重新初始化Yii应用定义自己的基类`TestCase`：
 
 ```
 <?php
@@ -1527,8 +1582,41 @@ abstract class TestCase extends \PHPUnit_Framework_TestCase
 }
 ```
 
+现在你可以在你的子类中扩展这个类。你的`test`方法在会在一个自己的应用实例中运行。它会帮助你避免副作用，并创建独立了测试。
+
+#### 注意
+
+Yii 2.0.\*使用旧版的PHPUnit 4.\*，用于兼容PHP5.4。
+
+### 参考
+
+- 所有关于PHPUnit使用方法的信息，参考官方文档[https://phpunit.de/manual/current/en/index.html](https://phpunit.de/manual/current/en/index.html)
+- *使用Codeception测试应用*小节
 
 ## 使用Atoum测试
+
+除了PHPUnit和Codeception，Atoum是一个简单的单元测试框架。你可以使用这个框架，用于测试你的扩展，或者测试你应用的代码。
+
+### 准备
+
+为新的项目创建一个空文件夹。
+
+### 如何做...
+
+在这个小节中，我们将会创建一个演示，使用Atoum测试购物车扩展。
+
+#### 准备扩展框架
+
+1. 首先，为你的扩展创建目录结构：
+
+```
+book
+└── cart
+    ├── src
+    └── tests
+```
+
+2. 作为一个composer包使用扩展。准备`book/cart/composer.json`文件：
 
 ```
 {
@@ -1555,15 +1643,55 @@ abstract class TestCase extends \PHPUnit_Framework_TestCase
 }
 ```
 
+3. 添加如下内容到`book/cart/.gitignore`文件：
 
 ```
 /vendor
 /composer.lock
 ```
 
+4. 安装扩展所有的依赖：
+
 ```
 composer install
 ```
+
+5. 现在我们将会得到如下结构：
+
+```
+book
+└── cart
+    ├── src
+    ├── tests
+    ├── .gitignore
+    ├── composer.json
+    ├── phpunit.xml.dist
+    └── vendor
+```
+
+#### 写扩展代码
+
+从*使用PHPUnit作单元测试*小节复制`Cart`、`StorageInterface`和`SessionStorage`类。
+
+最后，我们可以得到如下结构：
+
+```
+book
+    └── cart
+    ├── src
+    │   ├── storage
+    │   │   ├── SessionStorage.php
+    │   │   └── StorageInterface.php
+    │   └── Cart.php
+    ├── tests
+    ├── .gitignore
+    ├── composer.json
+    └── vendor
+```
+
+#### 写扩展测试
+
+1. 添加`book/cart/tests/bootstrap.php`入口脚本：
 
 ```
 <?php
@@ -1572,6 +1700,8 @@ defined('YII_ENV') or define('YII_ENV', 'test');
 require(__DIR__ . '/../vendor/autoload.php');
 require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
 ```
+
+2. 在每一个测试前，通过初始化Yii应用创建一个测试基类，然后在销毁它：
 
 ```
 <?php
@@ -1612,6 +1742,8 @@ abstract class TestCase extends test
 }
 ```
 
+3. 添加一个基于内存的干净的fake类，并继承`StorageInterface`接口：
+
 ```
 <?php
 namespace book\cart\tests;
@@ -1629,6 +1761,10 @@ class FakeStorage implements StorageInterface
     }
 }
 ```
+
+它会存储条目到一个私有变量中，而不是使用真正的session。它允许我们独立运行测试（不适用真正的存储驱动），并提升测试性能。
+
+4. 添加`Cart`测试类：
 
 ```
 <?php
@@ -1711,7 +1847,7 @@ class Cart extends TestCase
 }
 ```
 
-
+5. 添加一个独立的测试，用于检查`SessionStorage`类：
 
 ```
 <?php
@@ -1750,8 +1886,66 @@ class SessionStorage extends TestCase
 }
 ```
 
+6. 现在我们将会得到如下结构：
 
+```
+book
+└── cart
+    ├── src
+    │   ├── storage
+    │   │   ├── SessionStorage.php
+    │   │   └── StorageInterface.php
+    │   └── Cart.php
+    ├── tests
+    │   ├── units
+    │   │   ├── storage
+    │   │   │   └── SessionStorage.php
+    │   │   └── Cart.php
+    │   ├── bootstrap.php
+    │   ├── FakeStorage.php
+    │   └── TestCase.php
+    ├── .gitignore
+    ├── composer.json
+    └── vendor
+```
 
+#### 运行测试
+
+在使用`composer install`命令安装所有的依赖期间，Composer包管理器安装`Atoum`包到`vendor`目录中，并将可执行文件`atoum`放在`vendor/bin`子文件夹中。
+
+现在我们可以运行如下脚本：
+
+```
+cd book/cart
+vendor/bin/atoum -d tests/units -bf tests/bootstrap.php
+```
+
+此外，我们可以看到如下测试报告：
+
+```
+> atoum path: /book/cart/vendor/atoum/atoum/vendor/bin/atoum
+> atoum version: 2.7.0
+> atoum path: /book/cart/vendor/atoum/atoum/vendor/bin/atoum
+> atoum version: 2.7.0
+> PHP path: /usr/bin/php5
+> PHP version:
+=> PHP 5.5.9-1ubuntu4.16 (cli)
+> book\cart\tests\units\Cart...
+[SSSSSSSS__________________________________________________][8/8]
+=> Test duration: 1.13 seconds.
+=> Memory usage: 3.75 Mb.
+> book\cart\tests\units\storage\SessionStorage...
+[SS________________________________________________________][2/2]
+=> Test duration: 0.03 second.
+=> Memory usage: 1.00 Mb.
+> Total tests duration: 1.15 seconds.
+> Total tests memory usage: 4.75 Mb.
+> Code coverage value: 16.16%
+```
+
+每一个`S`符号表示一次成功的测试。
+
+尝试通过注释`unset`操作故意破坏cart：
 
 ```
 class Cart extends Component
@@ -1769,9 +1963,62 @@ class Cart extends Component
 }
 ```
 
+再次运行测试：
 
+```
+> atoum version: 2.7.0
+> PHP path: /usr/bin/php5
+> PHP version:
+=> PHP 5.5.9-1ubuntu4.16 (cli)
+book\cart\tests\units\Cart...
+[SSFSSSSS__________________________________________________][8/8]
+=> Test duration: 1.09 seconds.
+=> Memory usage: 3.25 Mb.
+> book\cart\tests\units\storage\SessionStorage...
+[SS________________________________________________________][2/2]
+=> Test duration: 0.02 second.
+=> Memory usage: 1.00 Mb.
+...
+Failure (2 tests, 10/10 methods, 0 void method, 0 skipped method, 0
+uncompleted method, 1 failure, 0 error, 0 exception)!
+> There is 1 failure:
+=> book\cart\tests\units\Cart::testRemove():
+In file /book/cart/tests/units/Cart.php on line 53, mageekguy\atoum\
+asserters\phpArray() failed: array(1) is not equal to array(0)
+-Expected
++Actual
+@@ -1 +1,3 @@
+-array(0) {
++array(1) {
++ [5] =>
++ int(3)
+```
 
+在这个例子中，我们看到一次错误（用`F`表示），以及一个错误报告。
 
+#### 分析代码覆盖率
+
+你必须安装XDebug PHP扩展，[https://xdebug.org](https://xdebug.org)。例如，在Ubuntu或者Debian上，你可以在终端中输入如下命令：
+
+```
+sudo apt-get install php5-xdebug
+```
+
+在Windows上，你需要打开`php.ini`文件，并添加自定义代码路径到你的PHP安装目录下：
+
+```
+[xdebug]
+zend_extension_ts=C:/php/ext/php_xdebug.dll
+```
+
+或者，如果你使用非线程安全的版本，输入如下：
+
+```
+[xdebug]
+zend_extension=C:/php/ext/php_xdebug.dll
+```
+
+安装过XDebug以后，创建`book/cart/coverage.php`配置文件，并添加覆盖率报告选项：
 
 ```
 <?php
@@ -1783,10 +2030,21 @@ html('Cart', __DIR__ . '/tests/coverage');
 $report->addField($coverageField);
 ```
 
+现在使用`-c`选项来使用这个配置再次运行测试：
+
 ```
 vendor/bin/atoum -d tests/units -bf tests/bootstrap.php -c coverage.php
 ```
 
+在运行这个测试以后，在浏览器中打开`tests/coverage/index.html`。你将会看到每一个目录和类的一个明确的覆盖率报告：
+
+![](../images/a1112.png)
+
+你可以点击任何类，并分析代码的哪些行在测试过程中还没有被执行。
+
+### 工作原理...
+
+Atoum测试框架支持行为驱动设计（BDD）语法流，如下：
 
 ```
 public function testSome()
@@ -1806,7 +2064,7 @@ public function testSome()
 }
 ```
 
-
+但是，你可以使用常用的类PHPUnit语法来写单元测试：
 
 ```
 public function testSome()
@@ -1819,6 +2077,38 @@ public function testSome()
 }
 ```
 
+Atoum也支持代码覆盖率报告，用于分析测试质量。
+
+### 参考
+
+- 欲了解更多关于Atoum的信息，参考[http://docs.atoum.org/en/latest/](http://docs.atoum.org/en/latest/)
+- 源代码和使用例子，参考[https://github.com/atoum/atoum](https://github.com/atoum/atoum)
+- *使用PHPUnit做单元测试*小节
+
+## 使用Behat作单元测试
+
+Behat是一个BDD框架，以人类可读的语句测试你的代码，这些语句以多个使用例子描述你的代码行为。
+
+### 准备
+
+为一个新的项目创建一个空的目录。
+
+### 如何做...
+
+在这个小节中，我们将会创建一个演示，使用Behat测试购物车扩展。
+
+#### 准备扩展结构
+
+1. 首先，为你的扩展创建一个目录结构：
+
+```
+book
+    └── cart
+        ├── src
+        └── features
+```
+
+2. 作为一个Composer包使用这个扩展，准备`book/cart/composer.json`文件如下：
 
 ```
 {
@@ -1846,6 +2136,54 @@ public function testSome()
 }
 ```
 
+3. 添加如下内容到`book/cart/.gitignore`：
+
+```
+/vendor
+/composer.lock
+```
+
+4. 安装扩展所有的依赖：
+
+```
+composer install
+```
+
+5. 现在我们得到如下结构：
+
+```
+book
+    └── cart
+        ├── src
+        ├── features
+        ├── .gitignore
+        ├── composer.json
+        └── vendor
+```
+
+#### 写扩展代码
+
+从*使用PHPUnit做单元测试*小节复制`Cart`、`StorageInterface`和`SessionStorage`类。
+
+最后，我们得到如下结构。
+
+```
+book
+└── cart
+├── src
+│   ├── storage
+│   │   ├── SessionStorage.php
+│   │   └── StorageInterface.php
+│   └── Cart.php
+├── features
+├── .gitignore
+├── composer.json
+└── vendor
+```
+
+#### 写扩展测试
+
+1. 添加`book/cart/features/bootstrap/bootstrap.php`入口脚本：
 
 ```
 <?php
@@ -1854,7 +2192,7 @@ defined('YII_ENV') or define('YII_ENV', 'test');
 require_once __DIR__ . '/../../vendor/yiisoft/yii2/Yii.php';
 ```
 
-
+2. 创建`features/cart.feature`文件，并写cart测试场景：
 
 ```
 Feature: Shopping cart
@@ -1897,8 +2235,7 @@ Feature: Shopping cart
         Then I should have empty cart
 ```
 
-
-
+3. 添加`features/storage.feature`存储测试文件：
 
 ```
 Feature: Shopping cart storage
@@ -1912,6 +2249,8 @@ Feature: Shopping cart storage
         When I save 3 pieces of 7 product to the storage
         Then I should have 3 pieces of 7 product in the storage
 ```
+
+4. 在`features/bootstrap/CartContext.php`文件中，为所有的步骤添加实现：
 
 ```
 <?php
@@ -2012,6 +2351,8 @@ class CartContext implements SnippetAcceptingContext
 }
 ```
 
+5. 此外，在`features/bootstrap/StorageContext.php`文件中，添加如下内容：
+
 ```
 <?php
 use Behat\Behat\Context\SnippetAcceptingContext;
@@ -2076,8 +2417,7 @@ class StorageContext implements SnippetAcceptingContext
 }
 ```
 
-
-
+6. 添加`features/bootstrap/CartContext/FakeStorage.php`文件，这是一个fake存储类：
 
 ```
 <?php
@@ -2097,20 +2437,175 @@ class FakeStorage implements StorageInterface
 }
 ```
 
+7. 添加`book/cart/behat.yml`：
 
+```
+default:
+    suites:
+        default:
+            contexts:
+                - CartContext
+                - StorageContext
+```
 
+8. 现在我们将得到如下结构：
 
+```
+book
+└── cart
+    ├── src
+    │   ├── storage
+    │   │   ├── SessionStorage.php
+    │   │   └── StorageInterface.php
+    │   └── Cart.php
+    ├── features
+    │   ├── bootstrap
+    │   │   ├── storage
+    │   │   │   └── FakeStorage.php
+    │   │   ├── bootstrap.php
+    │   │   ├── CartContext.php
+    │   │   └── StorageContext.php
+    │   ├── cart.feature
+    │   └── storage.feature
+    ├── .gitignore
+    ├── behat.yml
+    ├── composer.json
+    └── vendor
+```
 
+现在我们运行我们的测试。
 
+#### 运行测试
 
+在使用`composer install`命令安装所有依赖期间，Composer包管理器安装Behat包到`vendor`目录中，并将可执行文件`behat`放到`vendor/bin`子文件夹中。
 
+现在我们可以运行如下脚本：
 
+```
+cd book/cart
+vendor/bin/behat
+```
 
+此外，我们将会看到如下测试报告：
 
+```
+Feature: Shopping cart
+In order to buy products
+As a customer
+I need to be able to put interesting products into a cart
+Scenario: Checking empty cart # features/cart.feature:6
+Given there is a clean cart # thereIsACleanCart()
+Then I should have 0 products #
+iShouldHaveProductInTheCart()
+Then I should have 0 product #
+iShouldHaveProductInTheCart()
+And the overall cart amount should be 0 #
+theOverallCartPriceShouldBePs()
+...
+Feature: Shopping cart storage
+I need to be able to put items into a storage
+Scenario: Checking empty storage # features/storage.feature:4
+Given there is a clean storage # thereIsACleanStorage()
+Then I should have empty storage # iShouldHaveEmptyStorage()
+...
+6 scenarios (6 passed)
+31 steps (31 passed)
+0m0.23s (13.76Mb)
+```
 
+通过注释`unset`操作，故意破坏cart：
 
-![](../images/a1110.png)
+```
+class Cart extends Component
+{
+    …
+    public function set($id, $amount)
+    {
+        $this->loadItems();
+        // $this->_items[$id] = $amount;
+        $this->saveItems();
+    }
+    ...
+}
+```
 
-![](../images/a1111.png)
+现在再次运行测试：
 
-![](../images/a1112.png)
+```
+Feature: Shopping cart
+In order to buy products
+As a customer
+Feature: Shopping cart
+In order to buy products
+As a customer
+I need to be able to put interesting products into a cart
+...
+Scenario: Change product count in the cart # features/
+cart.feature:31
+Given there is a cart with 5 pieces of 7 prod #
+thereIsAWhichCostsPs()
+When I set 3 pieces for 7 product #
+iSetPiecesForProduct()
+Then I should have 3 pieces of 7 product #
+iShouldHavePiecesOf()
+Failed asserting that an array has the subset Array &0 (
+7 => 3
+).
+Scenario: Remove products from the cart # features/
+cart.feature:36
+Given there is a cart with 5 pieces of 7 prod #
+thereIsAWhichCostsPs()
+When I add 14 pieces of 7 product #
+iAddTheToTheCart()
+And I clear cart # iClearCart()
+Then I should have empty cart #
+iShouldHaveEmptyCart()
+--- Failed scenarios:
+features/cart.feature:31
+6 scenarios (5 passed, 1 failed)
+31 steps (30 passed, 1 failed)
+0m0.22s (13.85Mb)
+```
+
+在这个例子中，我们看到了一次失败和一次失败报告。
+
+### 工作原理...
+
+Behat是一个BDD测试框架。它促进writing preceding human-readable testing scenarios to low-level technical implementation。
+
+当我们为每一个特性写场景时，我们可以使用操作的一个集合：
+
+```
+Scenario: Adding products to the cart
+Given there is a clean cart
+When I add 3 pieces of 5 product
+Then I should have 3 pieces of 5 product
+And I should have 1 product
+And the overall cart amount should be 3
+```
+
+Behat解析我们的句子，并找到相关的实现：
+
+```
+class FeatureContext implements SnippetAcceptingContext
+{
+    /**
+    * @When I add :pieces of :product
+    */
+    public function iAddTheToTheCart($product, $pieces)
+    {
+        $this->cart->add($product, $pieces);
+    }
+}
+```
+
+你可以创建一个单`FeatureContext`类（默认），或者为特性集合场景创建指定的上下文的集合。
+
+### 参考
+
+欲了解更多关于Behat的信息，参考如下URL：
+
+- [http://docs.behat.org/en/v3.0/](http://docs.behat.org/en/v3.0/)
+- [https://github.com/Behat/Behat](https://github.com/Behat/Behat)
+
+欲了解更多关于其它测试框架的信息，参考本章中的其它小节。

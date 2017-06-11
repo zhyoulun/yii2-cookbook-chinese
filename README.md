@@ -1,4 +1,4 @@
-# Yii Application Development Cookbook(Third Edition) 中文翻译
+# Yii Application Development Cookbook(Third Edition)翻译
 
 | 序号 | 章节 |
 |--|--|
