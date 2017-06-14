@@ -152,13 +152,41 @@ return [
 
 ## 移动一个应用webroot
 
-默认情况下，Yii2应用使用`web`文件夹存放你网站的入口脚本。但是
+默认情况下，Yii2应用使用`web`文件夹存放你网站的入口脚本。但是共享的托管环境通常会对配置和目录结构有限制。你不能修改你网站的工作目录。大部分服务器只提供`public_html`目录存放你网站的入口脚本。
+
+### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+### 如何做...
+
+下边我们来讨论如何修改一个应用的webroot。
+
+#### 在root中存放文件
+
+1. 上传应用文件到你的托管服务器上
+2. 重命名`web`目录为`public_html`
+3. 检查网站是否工作正常
+
+#### 将文件放在一个子文件夹中
+
+一个托管服务器用户目录可能包含其它文件和文件夹。遵照下面的步骤，你可以将文件移动到子文件夹中：
+
+1. 创建`application`和`public_html`文件夹
+2. 将应用文件移动到`application`文件夹中
+3. 将`application/web`文件夹中的内容移动到`public_html`文件夹中
+4. 打开`public_html/index.php`文件，并修改包含的路径：
 
 ```
 require(__DIR__ . '/../application/vendor/autoload.php');
 require(__DIR__ . '/../application/vendor/yiisoft/yii2/Yii.php');
 ```
 
+### 工作原理...
+
+Yii2应用基于入口脚本的位置自动设置`@web`和`@webroot` alias路径。因此我们可以很容易移动或者重命名一个`web`目录，并且不需要修改应用的配置。
+
+对于`yii2-app-advanced`，你可以移动`backend`中`web`目录中的内容到一个子文件夹中，例如`admin`：
 
 ```
 public_html
@@ -174,35 +202,52 @@ frontend
 ...
 ```
 
+### 参考
 
+欲了解更多关于在一个共享托管环境上安装Yii，参考[http://www.yiiframework.com/doc-2.0/guide-tutorial-shared-hosting.html](http://www.yiiframework.com/doc-2.0/guide-tutorial-shared-hosting.html)。
+
+## 修改一个高级应用模板
+
+默认情况下，Yii2的高级模板有`console`，`frontend`和`backend`应用。但是，在你的特殊情况下，你可以重命名已有的一个，创建你自己的应用。例如，如果你在为你的网站开发API，你可以添加`api`应用。
+
+### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-advanced`应用。
+
+### 如何做...
+
+1. 在应用的根目录下，复制`backend`文件夹中的内容到一个新的`api`文件夹中。
+2. 打开`api/config/main.php`文件，修改`controllerNamespace`的值：
 
 ```
 return [
     'id' => 'app-manager',
     'basePath' => dirname(__DIR__),
-    'controllerNamespace' =>
-    'api\controllers',
+    'controllerNamespace' => 'api\controllers',
     // ....
 ]
 ```
 
+3. 打开`api/assets/AppAsset.php`和`api/controllers/SiteController.php`，将命名空间从`backend`修改为`api`：
 
 ```
 namespaces api\assets;
 namespaces api\controllers;
 ```
 
-
+4. 打开`api/views/layouts/main.php`文件，找到如下行：
 
 ```
 use backend\assets\AppAsset;
 ```
 
+修改为：
 
 ```
 use api\assets\AppAsset;
 ```
 
+5. 打开`common/config/bootstrap.php`，为新的应用添加`@api` alias：
 
 ```
 <?php
@@ -212,6 +257,9 @@ Yii::setAlias('@backend', dirname(dirname(__DIR__)) .'/backend');
 Yii::setAlias('@console', dirname(dirname(__DIR__)) .'/console');
 Yii::setAlias('@api', dirname(dirname(__DIR__)) . '/api);
 ```
+
+6. 打开`environments`目录，在`dev`和`prod`子文件夹中，拷贝`backend`文件夹为`api`。
+7. 打开`environments/index.php`文件，为`api`应用添加如下行：
 
 ```
 return [
@@ -257,6 +305,31 @@ return [
 ];
 ```
 
+现在，你就有了`console`、`frontend`、`backend`和`api`应用。
+
+### 工作原理...
+
+高级应用模板，是一组带有自定义aliases的应用集合，例如`@frontend`，`@backend`，`@common`，`@console`，以及相对应的命名空间。而对于`Basic`模板只有一个简单的`@app` alias。
+
+如果有需要，你可以很容易的添加、删除或者重命名这些应用（以及他们的aliases和命名空间）。
+
+### 参考
+
+欲了解更多关于应用目录结构使用的信息，参考[https://github.com/yiisoft/yii2-app-advanced/tree/master/docs/guide](https://github.com/yiisoft/yii2-app-advanced/tree/master/docs/guide)
+
+## 将配置部分移到单独的文件中
+
+在基础应用模板中，我们分离了web和console配置文件。通常情况下，我们可以在两个配置文件中设置一些应用组件。
+
+而且，当我们开发一个大型应用时，我们可能面临一些不方便的问题。例如，如果我们需要调整一些设置，我们很可能需要在web应用配置和console应用配置中做多次重复修改。
+
+### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+### 如何做...
+
+1. 打开`config/web.php`文件，添加`urlManager`部分到组件配置中：
 
 ```
 'components' => [
@@ -276,6 +349,7 @@ return [
 ],
 ```
 
+2. 创建`config/urlRules.php`文件，并将规则数组移到这里边：
 
 ```
 <?php
@@ -287,6 +361,7 @@ return [
 ];
 ```
 
+3. 使用这个文件替换这个规则数组：
 
 ```
 'urlManager' => [
@@ -297,15 +372,36 @@ return [
 ],
 ```
 
+### 工作原理...
+
+先前的技术依赖于这样的事实，Yii配置文件是原生的PHP文件，里边有一个数组：
+
 ```
 <?php return [...];
 ```
+
+我们看`require`结构：
 
 ```
 'rules' => require(__DIR__ . '/urlRules.php'),
 ```
 
+当我们使用这个的时候，它会读取指定的文件，并且，如果文件中有一个`return`语句，它会返回一个值。
 
+因此，将主配置文件中的一部分移到一个单独的文件中，需要创建一个新的文件，将配置的一部分移到`return`语句的后边，并在主配置文件中使用`require`。
+
+它分离了应用需要的一些常用配置部分（在我们的例子中，有web应用和console应用），我们可以使用`require`将他们移到一个单独的文件中。
+
+### 参考
+
+欲了解更多关于`require`和`include`语句，参考如下URL：
+
+- [http://php.net/manual/en/function.require.php](http://php.net/manual/en/function.require.php)
+- [http://php.net/manual/en/function.include.php](http://php.net/manual/en/function.include.php)
+
+## 使用多个配置来简化部署
+
+高级应用模板为它的每一个应用使用不同的配置文件。
 
 ```
 common
@@ -334,6 +430,7 @@ frontend
         params-local.php
 ```
 
+每一个入口`web/index.php`脚本合并自己配置文件的集合：
 
 ```
 $config = yii\helpers\ArrayHelper::merge(
@@ -346,6 +443,7 @@ $application = new yii\web\Application($config);
 $application->run();
 ```
 
+每一个`config/main.php`文件和并参数：
 
 ```
 <?php
@@ -361,6 +459,7 @@ return [
 ];
 ```
 
+这个系统允许你
 
 ```
 config
