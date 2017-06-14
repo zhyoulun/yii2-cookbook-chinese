@@ -459,7 +459,11 @@ return [
 ];
 ```
 
-这个系统允许你
+这个系统允许你配置应用中常用和特殊应用属性和组件。并且我们可以基于版本控制系统，存储缺省配置文件，并忽略所有的`*-local.php`文件。
+
+所有的本地文件模板在`environments`文件夹中准备，当你在控制台中运行`php init`，并选择一个needle环境，这个初始脚本复制相应的文件，并将它们放在目标文件夹中。
+
+但是基础应用模板不包含敏捷配置系统，只提供如下文件：
 
 ```
 config
@@ -469,6 +473,15 @@ config
     params.php
 ```
 
+尝试添加一个高级配置系统到`yii2-app-basic`应用模板中。
+
+### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+### 如何做...
+
+1. 创建`config/common.php`文件：
 
 ```
 <?php
@@ -491,7 +504,7 @@ return [
 ];
 ```
 
-
+2. 创建`config/common-local`文件：
 
 ```
 <?php
@@ -511,7 +524,8 @@ return [
 ];
 ```
 
-
+3. 移除`config/db.php`文件：
+4. 从`config/console.php`移除重复的代码：
 
 ```
 <?php
@@ -536,14 +550,13 @@ return [
 ];
 ```
 
-
+5. 创建一个带有空数组的文件`config/console-local.php`：
 
 ```
 <?php return [];
 ```
 
-
-
+6. 修改`config/web.php`文件：
 
 ```
 $config = [
@@ -578,9 +591,7 @@ if (YII_ENV_DEV) {
 return $config;
 ```
 
-
-
-
+7. 将`request`配置移动到`config/web-local.php`文件中：
 
 ```
 <?php
@@ -593,10 +604,7 @@ return [
 ];
 ```
 
-
-
-
-
+8. 从`config/params.php`文件中移除电子邮件ID：
 
 ```
 <?php
@@ -605,10 +613,7 @@ return [
 ];
 ```
 
-
-
-
-
+9. 粘贴ID到`config/params-local.php`文件：
 
 ```
 <?php
@@ -617,10 +622,7 @@ return [
 ];
 ```
 
-
-
-
-
+10. 从`tests/codeception/config/config.php`移除`dsn`字符串：
 
 ```
 <?php
@@ -645,10 +647,7 @@ return [
 ];
 ```
 
-
-
-
-
+11. 将字符串放到一个新文件中`tests/codeception/config/config-local.php`：
 
 ```
 <?php
@@ -661,9 +660,7 @@ return [
 ];
 ```
 
-
-
-
+12. 在文件`web/index.php`中添加配置合并：
 
 ```
 $config = yii\helpers\ArrayHelper::merge(
@@ -674,6 +671,7 @@ $config = yii\helpers\ArrayHelper::merge(
 );
 ```
 
+13. 添加配置合并到终端入口脚本，`yii`：
 
 ```
 $config = yii\helpers\ArrayHelper::merge(
@@ -684,7 +682,7 @@ $config = yii\helpers\ArrayHelper::merge(
 );
 ```
 
-
+14. 添加配置合并到`tests/codeception/config`中含有单元、功能、验收测试的测试配置中：
 
 ```
 return yii\helpers\ArrayHelper::merge(
@@ -700,7 +698,7 @@ return yii\helpers\ArrayHelper::merge(
 );
 ```
 
-
+15. 添加配置合并到测试环境控制台的入口脚本，`tests/codeception/bin/yii`：
 
 ```
 $config = yii\helpers\ArrayHelper::merge(
@@ -713,7 +711,7 @@ $config = yii\helpers\ArrayHelper::merge(
 );
 ```
 
-
+16. 结果是，你可以在你的配置文件夹下，获得如下内容：
 
 ```
 config
@@ -727,14 +725,19 @@ config
     params-local.php
 ```
 
-
+17. 最终，你可以添加一个新的`.gitignore`文件到你的`config`和`tests/codeception/config`文件夹下，所以你可以通过版本控制系统忽略本地配置文件：
 
 ```
 /*-local.php
 ```
 
+### 工作原理...
 
+你可以在`config/common.php`文件中存储常见的应用组件配置，同时也可以为web和控制台应用设置指定的配置。你可以将你的临时和安全配置数据放在`*-local.php`文件中。
 
+此外，你可以从`yii2-app-advanced`中复制初始化shell脚本。
+
+1. 创建一个新的`environments`目录，并复制你的模板到里边：
 
 ```
 environments
@@ -764,6 +767,7 @@ environments
         yii
 ```
 
+2. 创建`environments/index.php`文件：
 
 ```
 <?php
@@ -798,6 +802,7 @@ return [
 ];
 ```
 
+3. 从你的`composer.json`中移除默认的`Installer::postCreateProject`配置：
 
 ```
 "extra": {
@@ -808,6 +813,27 @@ return [
 }
 ```
 
+4. 从高级模板[https://github.com/yiisoft/yii2-app-advanced](https://github.com/yiisoft/yii2-app-advanced)拷贝`init`和`init.bat`脚本，你可以使用`php init`运行初始化过程，从repository中克隆项目。
+
+### 参考
+
+欲了解更多关于应用配置的信息，参考[http://www.yiiframework.com/doc-2.0/guide-concept-configurations.html](http://www.yiiframework.com/doc-2.0/guide-concept-configurations.html)。
+
+## 实施和执行cron任务
+
+有时，一个应用需要一些后台任务，例如重新生成一个站点地图，或者刷新统计数据。一种常见的方式是使用cron任务。当使用Yii时，有一种方法可以使用一个命令做为任务来运行。
+
+在这个小节中，我们将会看到如何同时实现。在我们的小节中，我们将会实现写当前时间戳到受保护文件夹中的`timestamp.txt`文件中。
+
+### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+### 如何做...
+
+#### 运行Hello命令
+
+尝试作为shell命令运行`app\commands\HelloController::actionIndex`：
 
 ```
 <?php
@@ -829,21 +855,25 @@ class HelloController extends Controller
 }
 ```
 
+1. 在你的应用目录中，打开shell，并执行如下命令：
 
 ```
 php yii
 ```
 
+此外，你也可以调用如下，确保shell可以工作：
 
 ```
 ./yii
 ```
 
+2. 输入如下命令，展示`hello`：
 
 ```
 ./yii help hello
 ```
 
+2. 这个框架可以展示一些信息：
 
 ```
 DESCRIPTION
@@ -854,20 +884,24 @@ yii hello [message] [...options...]
 the message to be echoed.
 ```
 
+4. 运行缺省命令动作：
 
 ```
 ./yii hello
 ```
 
+或者，运行指定的`index`动作：
 
 ```
 ./yii hello/index
 ```
 
+5. 你可以看到默认提示：
 
 ```
 Hello world
 ```
+
 
 
 ```
