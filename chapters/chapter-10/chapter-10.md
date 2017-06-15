@@ -902,12 +902,15 @@ the message to be echoed.
 Hello world
 ```
 
-
+6. 运行带有任何参数的命令，将会看到响应：
 
 ```
 ./yii hello 'Bond, James Bond'
 ```
 
+#### 创建你自己的命令
+
+你也可以创建你自己的控制台控制器。例如，创建一个`commands/CronController.php`文件：
 
 ```
 <?php
@@ -933,17 +936,51 @@ class CronController extends Controller
 }
 ```
 
+这些完成以后，在控制台中运行命令：
 
 ```
 ./yii cron/timestamp
 ```
 
+然后，检查响应文本，以及生成的新文件`timestamp.txt`。
+
+#### 设置cron任务
+
+在你的Linux服务器上创建`/etc/cron.d/myapp`，并添加如下内容，让我们的脚本在每天的半夜12点整运行一次：
 
 ```
-0 0
-* * * www-data /path/to/yii cron/timestamp >/dev/null
+0 0 * * * www-data /path/to/yii cron/timestamp >/dev/null
 ```
 
+### 工作原理...
+
+一个控制台命令被定义成了一个控制器类，这个类继承了`yii\console\Controller`。在控制器类中，你可以定义一个或多个动作，分别对应这个控制器的多个子命令。在每一个动作中，你可以为每一个指定的子命令实现恰当的任务。
+
+在运行一个命令时，你需要指定控制器动作的路由。例如，`migrate/create`调用的子命令对应于`MigrateController::actionCreate()`动作函数。如果在执行时，提供的路由不包含一个动作ID，默认的动作将会被执行（作为一个web控制器）。
+
+注意你的控制台控制器被放置在指定的文件夹中，位置由`web/console.php`中的`controllerNamespace`选项定义。
+
+### 参考
+
+- 欲了解更多关于Yii2控制台命令的信息，参考[http://www.yiiframework.com/doc-2.0/guide-tutorial-console.html](http://www.yiiframework.com/doc-2.0/guide-tutorial-console.html)
+- 为了了解更多关于Cron daemon的信息，参考[https://en.wikipedia.org/wiki/Cron](https://en.wikipedia.org/wiki/Cron)
+- *修改你的Yii目录layout*小节中的`controllerNamespace`
+
+## 维护模式
+
+有时，需要微调一些应用的设置，或者从一个备份中恢复数据库。当处理这些任务时，你不希望允许每一个人使用应用，因为它可能会导致丢失最新的用户消息，或者展示应用实现的细节。
+
+在这个小节中，我们将会看到如何向除了开发者以外的每一个人展示一条维护消息。
+
+### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+### 如何做...
+
+执行如下步骤：
+
+1. 首先，我们需要创建`protected/controllers/MaintenanceController.php`。我们按如下方式做：
 
 ```
 class MaintenanceController extends Controller
@@ -954,6 +991,8 @@ class MaintenanceController extends Controller
     }
 }
 ```
+
+2. 然后，我们创建一个名为`views/maintenance/index.php`的视图，如下所示：
 
 ```
 <?php
@@ -975,6 +1014,7 @@ use yii\helpers\Html;
 </body>
 ```
 
+3. 现在，我们需要添加一行代码到`config/web.php`，如下所示：
 
 ```
 $config = [
@@ -983,33 +1023,72 @@ $config = [
 ]
 ```
 
+4. 现在为了前往维护模式，你需要在你的网站目录下创建一个名为`.maintenance`的文件。做完这一步后，你将会看到这个页面。
+
+为了回到正常模式，你只需要删除这个文件。为了查看网站的维护模式，你可以创建一个名为`secret`的cookie，它的值是等于`password`。
+
+### 工作原理...
+
+一个Yii web应用提供了一种方式，可以拦截所有可能的请求，并这它们重定向到一个指定的控制器动作上。你可以通过设置`yii\web\Application::catchAll`为一个包含应用路由的数组来做到它：
+
 ```
 'catchAll' => ['maintenance/index'],
 ```
 
+这个维护控制器本身并不特别；它只是渲染一个带有文字的视图。
 
+我们需要一种简单的方式，来打开或者关闭维护模式。因为应用配置文件是一个特殊的PHP文件，我们可以使用一个简单的检查，查看制定文件是否存在，来做到这些。如下所示：
 
 ```
 file_exists(dirname(__DIR__) . '/.maintenance')
 ```
 
-
+此外，我们检查cookie值来能覆盖维护模式。如下所示：
 
 ```
 !(isset($_COOKIE['secret']) && $_COOKIE['secret']=="password")
 ```
 
+### 参考
 
+为了了解更多关于在Yii应用中如何捕获所有请求，以及为production ready solution用于维护，参考[http://www.yiiframework.com/doc-2.0/yii-webapplication.html#$catchAll-detail](http://www.yiiframework.com/doc-2.0/yii-webapplication.html#$catchAll-detail)。
+
+## 部署工具
+
+如果你为你的项目代码在使用一个版本控制系统，例如Git，将发布包推到远程库，你可以使用Git中的`git pull`命令来部署代码到你的生产服务器上，而不用手动上传文件。此外，你可以给自己写一个shell脚本来拉取新的库提交，更新vendors，应用migration等等。
+
+但是，有很多工具可以用来做自动化部署。在本小节中，我们来看一些名叫Deployer的工具。
+
+### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+### 如何做...
+
+如果你有一个共享的远程库，你可以使用它用来部署源。
+
+#### 第一步：准备远程host
+
+1. 到你的远程host，安装Composer以及`asset-plugin`：
 
 ```
 global require 'fxp/composer-asset-plugin:~1.1.1'
 ```
 
 
+2. 使用`ssh-kengen`生成SSH秘钥。
+3. 添加`~/.ssh/id_rsa.pub`文件内容到你的库设置页面中（部署SSH秘钥页面），例如Github、Bitbucket或者其它库存储。
+4. 尝试游动克隆的库：
+
 ```
 git clone git@github.com:user/repo.git
 ```
 
+5. 添加Github地址，以及已知的host列表（如果你的系统问你要的话）。
+
+#### 第二步：准备localhost
+
+1. 在本地全局安装`deploy.phar`：
 
 ```
 sudo wget http://deployer.org/deployer.phar
@@ -1017,6 +1096,7 @@ sudo mv deployer.phar /usr/local/bin/dep
 sudo chmod +x /usr/local/bin/dep
 ```
 
+2. 使用部署配置添加`deploy.php`文件：
 
 ```
 <?php
@@ -1037,11 +1117,15 @@ password
 set('repository', 'git@github.com:user/repo.git');
 ```
 
+3. 尝试准备远程项目目录结构：
 
 ```
 dep deploy:prepare prod
 ```
 
+#### 第三步：添加远程配置
+
+1. 打开服务器的`/var/www/project`目录。初始化后它有两个子目录：
 
 ```
 project
@@ -1049,6 +1133,7 @@ project
 └── shared
 ```
 
+2. 在`shared`文件中创建带有私有配置的原始文件：
 
 ```
 project
@@ -1062,6 +1147,9 @@ project
         └── yii
 ```
 
+Deployer工具将会在每一个发布的子目录中通过软连接的方式包含这些文件：
+
+在`share/config/db.php`文件中指定你的私有配置：
 
 ```
 <?php
@@ -1074,6 +1162,7 @@ return [
 ];
 ```
 
+此外，在`share/config/params.php`中指定它：
 
 ```
 <?php
@@ -1082,6 +1171,7 @@ return [
 ];
 ```
 
+设置文件`share/web/index.php`的内容：
 
 ```
 <?php
@@ -1094,6 +1184,7 @@ $config = require($dir . '/../config/web.php');
 (new yii\web\Application($config))->run();
 ```
 
+此外，设置`share/yii`文件的内容：
 
 ```
 #!/usr/bin/env php
@@ -1109,9 +1200,22 @@ $exitCode = $application->run();
 exit($exitCode);
 ```
 
+**注意**：我们故意使用`dirname($_SERVER['SCRIPT_FILENAME'])`，而不是原始的`__DIR__`常量，因为如果这个文件时软连接的话，`__DIR__`将会返回不正确的值。
+
+注意：如果你使用`yii2-app-advanced`模板，你可以只重定义`config/main-local.php`和`config/params-local.php`文件（backend、frontend、console和common），因为`web/index.php`和`yii`将会自动通过`init`命令生成。
+
+#### 第四步：尝试部署
+
+1. 回到本地，使用`deploy.php`文件，并运行部署命令：
+
 ```
 dep deploy prod
 ```
+
+![](../images/a1001.png)
+
+2. 如果成功，你将会看到部署报告：
+3. Deployer在你的远程服务器上，创建一个新的发布子目录，并从你的项目到共享的items，以及从`current`目录到当前发布添加软连接：
 
 ```
 project
@@ -1133,3 +1237,30 @@ project
     │   └── index.php
     └── yii
 ```
+
+4. 所有这些完成以后，你必须在`project/current/web`目录中设置你的服务器`DocumentRoot`。
+5. 如果在部署过程中，发生了一些错误，你可以回滚到先前的发布上：
+
+```
+dep rollback prod
+```
+
+`current`目录将会定向到你先前的发布文件上。
+
+### 工作原理...
+
+大部分的部署工具都做了同样的任务：
+
+- 创建一个新的发布子目录
+- 克隆库文件
+- 从项目中制作软连接到共享的目录上，以及到本地配置文件上
+- 安装Composer包
+- 应用项目migration
+- 从服务器的`DocumentRoot`路径上切换软链接到当前发布目录上
+
+Deployer工具为流行的框架都做了预定义。你可以扩展任何已有的例子，或者为你的特殊的例子制作新的。
+
+### 参考
+
+- 欲了解更多关于Deployer的信息，参考[http://deployer.org/docs](http://deployer.org/docs)
+- 关于创建SHH秘钥的信息，参考[https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public-Key](https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public-Key)
