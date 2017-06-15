@@ -1,17 +1,37 @@
 # 性能调优
 
+在本章中，我们将会讨论如下话题：
 
+- 使用最佳实践
+- 加速session处理
+- 使用缓存依赖和chains
+- profiling一个Yii应用
+- Leveraging HTTP缓存
+- 合并和最小化资源
+- 在HHVM上运行Yii2
+
+Yii是现有最快的框架中的一个。然后，当开发和部署一个应用时，有一些免费的额外性能和遵守最佳实践是有好处的。在本章中，你将会看到如何配置Yii来获取额外的性能。此外，你将会了解到一些最佳实践，可用于开发你的应用，能顺畅的运行，知道你有非常高的负载。
 
 ## 使用最佳实践
 
+在本小节中，你将会看到如何配置Yii2，得到最好的性能，以及额外的创建响应式应用的原则。这些原则既是常用的也是Yii相关的。因此，我们将能使用这些原则，甚至不使用Yii2时也可以。
+
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
 ### 如何做...
+
+1. 更新你的PHP到最新的稳定版本。PHP的主发布版可能会带来非常大的性能提升。关掉调试模式，并设置为`prod`环境。这可以通过编辑`web/index.php`：
 
 ```
 defined('YII_DEBUG') or define('YII_DEBUG', false);
 defined('YII_ENV') or define('YII_ENV', 'prod');
 ```
+
+**注意**：在`yii2-app-advanced`应用框架中，你可以使用shell命令`php init`，以及选择生产环境，用于加载优化的`index.php`和配置文件。
+
+2. 激活`cache`组件：
 
 ```
 'components' => [
@@ -20,6 +40,8 @@ defined('YII_ENV') or define('YII_ENV', 'prod');
     ],
 ],
 ```
+
+你可以使用任何缓存存储，不只是`FileCache`。此外，你可以注册多个缓存应用组件，并使用`Yii::$app->cache`和`Yii::$app->cache2`来获取不同的数据类型：
 
 ```
 'components' => [
@@ -33,6 +55,9 @@ defined('YII_ENV') or define('YII_ENV', 'prod');
 ],
 ```
 
+这个框架默认在它自己的类中使用`cache`组件。
+
+3. 为`db`组件激活表schema缓存：
 
 ```
 return [
@@ -57,12 +82,13 @@ return [
 ];
 ```
 
-
+4. 使用纯数据，而不是ActiveRecord对象来列出元素的集合。
 
 ```
 $categoriesArray = Categories::find()->asArray()->all();
 ```
 
+5. 在`foreach`中使用`each()`而不是`all()`来获取大量的结果：
 
 ```
 foreach (Post::find()->each() as $post) {
@@ -70,11 +96,17 @@ foreach (Post::find()->each() as $post) {
 }
 ```
 
+6. 因为Composer的autoloader被用于包含大部分的第三方类文件，你应该考虑通过如下命令优化它：
+
 ```
 composer dump-autoload -o
 ```
 
 ### 工作原理...
+
+当`YII_DEBUG`被设置为`false`时，Yii关闭了所有trace级别的日志，并使用较少的错误处理代码。此外，当你设置`YII_ENV`为`prod`时，你的应用不会加载Yii和Debug面板模块。
+
+设置`schemaCachingDuration`为一个以秒为单位的数字，允许Yii的ActiveRecord缓存数据的schema。对于生产环境，我们非常建议这样做，它会大幅提高ActiveRecord的性能。为了使它能功能，你需要正确的配置`cache`：
 
 ```
 'cache' => [
@@ -82,17 +114,47 @@ composer dump-autoload -o
 ],
 ```
 
+激活缓存对其它Yii组件也有正面的影响。例如，Yii路由或者urlManager从cache路由开始。
+
+当然，你可以进入到一种情况，先前的设置对于显著的提升性能没有帮助。在大部分情况下，这意味着这个应用本身是一个瓶颈，你需要更多的硬件。
+
+- **服务端性能只是重点中的一部分**：服务端性能只是所有能影响全局性能中的一个点。通过优化客户端，例如CSS、图像和Javascript文件，正确的缓存和减少HTTP请求的数量，可以有一个很好的可见的性能提升，即使是没有优化PHP代码。
+- **不使用Yii做事**：有些事情如果不使用Yii可以很好的完成。例如，实时修改图像大小在一个独立的PHP脚本中进行会更快，可以避免额外的负载。
+- **Active Record和Query Builder以及SQL对比**：在对性能比较敏感的应用部分使用Query Builder和SQL。一般情况下，AR对于添加和编辑记录非常有用，因为它添加一个很方便的校验层，但当查询记录时并没有什么用。
+- **经常检查慢查询**：如果开发者意外忘记给一个表格添加索引，当数据库经常被读取时，数据库就会成为性能瓶颈；反之亦然，如果添加太多的索引，而又要经常写数据。同样的事情会发生在选择不必要的数据以及不需要的JOINs。
+- **缓存或者保存重型过程的结果**：如果你可以在每一个页面加载过程中避免运行一个重型过程，这最好了。例如，保存或者缓存解析的markdown文本，净化一次后（这是一个非常耗资源的过程），以后就是可以直接用于展示的HTML了。
+- **处理太多的过程**：有时有太多的过程需要立即处理。它可以创建复杂的报告，或者只是简单的发送电子邮件（如果你的项目加载的很重）。在这种情况下，最好将它放入到队列中，然后使用cron或者其它指定的工具来处理。
+
 ### 参考
+
+欲了解更多关于性能调优和缓存的信息，参考如下地址：
+
+- [http://www.yiiframework.com/doc-2.0/guide-tutorial-performance-tuning.html](http://www.yiiframework.com/doc-2.0/guide-tutorial-performance-tuning.html)
+- [http://www.yiiframework.com/doc-2.0/guide-caching-overview.html](http://www.yiiframework.com/doc-2.0/guide-caching-overview.html)
 
 ## 加速session处理
 
+在PHP中原生的session处理在大部分情况下已经非常好了。但至少有两个可能原因，你希望改变session的处理方式：
+
+- 当使用多个服务器时，需要有统一的session存储。
+- 默认的PHP session使用文件，所以最大的性能瓶颈在磁盘I/O上。
+- 默认的PHP session是阻塞并发的session存储。在这个小节中，我们将会看到如何使用Yii做高效的session存储。
+
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。并安装Memcache服务器和`memcache` PHP扩展。
+
 ### 如何做...
+
+我们使用apache的`ab`工具对网站做压力测试。它是和apache二进制文件一起发布，所以如果正在使用apache，你将会在`bin`文件夹中找到它。
+
+1. 运行如下命令，并将网址替换成你的正在使用的网站的网址：
 
 ```
 ab -n 1000 -c 5 http://yii-book.app/index.php?r=site/contact
 ```
+
+这将会发送1000次请求，一次发送5个，并会得到如下输出统计：
 
 ```
 This is ApacheBench, Version 2.3 <$Revision: 1528965 $>
@@ -125,6 +187,12 @@ Waiting: 15 41 255.1 24 4695
 Total: 18 55 324.9 29 4702
 ```
 
+我们对每秒请求次数指标（requests-per-second，简称QPS）感兴趣。这个值意味着这个网站在并发数为5的情况下，每秒可以处理91.24次请求。
+
+**注意**：注意调试并没有关闭，因为我们对修改session处理速度感兴趣。
+
+2. 现在添加如下代码到`/config/web.php`组件部分：
+
 ```
 'session' => array(
     'class' => 'yii\web\CacheSession',
@@ -134,9 +202,18 @@ Total: 18 55 324.9 29 4702
     'class' => 'yii\caching\MemCache',
 ),
 ```
+
+3. 再次以相同的设置运行`ab`。这次，你应该能得到更好的结果。在我的例子中，QPS是139.07。这意味着`Memcache`，作为一个session处理器，相对于基于文件的session处理器提升了52%的性能。
+
+**注意**：不要依赖于这里提供的精确的结果。它依赖于软件版本、设置和使用的硬件。经常尝试在你即将部署应用的环境中，运行所有的测试。
+
+4. 通过选择正确的session处理后端，你可以得到一个显著的性能提升。Yii支持更多的缓存后端out-of-the-box，包括WinCache、XCache和Zend Data Cache，它来自于Zend Server。而且，你可以实施你自己的缓存后端，来使用快速的noSQL存储，例如Redis。
 
 ### 工作原理...
 
+默认情况下，Yii使用原生PHP session；这意味着大部分情况下使用文件系统。文件系统并不能高效的处理高并发请求。
+
+Memcache或者其它平台在如下情况下，能很好的执行：
 
 ```
 'session' => array(
@@ -148,6 +225,15 @@ Total: 18 55 324.9 29 4702
 ),
 ```
 
+在先前的配置部分，我们在Yii中使用`CacheSession`作为一个session处理器。使用这个组件，我们可以委托session处理器为`cache`中指定的缓存组件。这次我们使用`MemCache`。
+
+当使用一个memcached后端，你应该考虑到这个事实，当使用这些解决方案时，当缓存达到最大存储容量时，应用用户可能丢失session。
+
+**注意**：注意到，当为一个session使用一个缓存后端时，你不能依赖于一个session作为一个临时数据存储，因为在memcached中将不会有更多内存来存储更多数据。在这个例子中，只需要清理所有的数据，并清除其中的一部分。
+
+如果你在使用多个服务器，你不能使用文件存储。没有办法来分享多个服务器之间的session数据。在memcached的例子中，这非常容易，因为它可以被多个服务器访问。
+
+此外，对于分享session数据，你可以使用`DbSession`：
 
 ```
 return [
@@ -160,6 +246,7 @@ return [
 ];
 ```
 
+现在，在你的数据库中创建一个张新表：
 
 ```
 CREATE TABLE session (
@@ -171,11 +258,20 @@ CREATE TABLE session (
 
 ### 更多...
 
+尽可能关闭session是一个好主意。如果你不想在当前的请求中在session中存储任何数据，你甚至可以在你的控制器动作一开始就关闭它。这样，在你的应用中即使是使用文件作为存储也是没关系的。
+
+使用如下命令：
+
 ```
 Yii:$app->session->close();
 ```
 
 ### 参考
+
+欲了解更多关于性能和缓存的信息，参考如下地址：
+
+- [http://www.yiiframework.com/doc-2.0/guide-tutorial-performance-tuning.html](http://www.yiiframework.com/doc-2.0/guide-tutorial-performance-tuning.html)
+- [http://www.yiiframework.com/doc-2.0/guide-caching-overview.html](http://www.yiiframework.com/doc-2.0/guide-caching-overview.html)
 
 ## 使用缓存依赖和chains
 
