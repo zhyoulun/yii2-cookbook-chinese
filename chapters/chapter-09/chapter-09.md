@@ -275,9 +275,17 @@ Yii:$app->session->close();
 
 ## 使用缓存依赖和chains
 
-### 注意
+Yii支持需要缓存后端，但是使Yii缓存灵活的是依赖和依赖chaining支持。有一些情况，你不能简单的只缓存1个小时的数据，因为信息随时可能会边。
+
+在这个小节中，我们将会学习如何缓存整个页面，并能在有更新时获取最新的数据。这个页面是一个仪表盘类型的，将会展示5个最新添加的文章，以及总数。
+
+**注意**：注意一个操作不能被编辑 as it is added，但是一个文章可以。
 
 ### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+1. 在`config/web.php`中激活缓存组件：
 
 ```
 return [
@@ -289,6 +297,9 @@ return [
     ],
 ];
 ```
+
+2. 设置一个新的数据库，并将它配置到`config/db.php`中：
+3. 运行如下migration：
 
 ```
 <?php
@@ -320,6 +331,8 @@ class m160308_093233_create_example_tables extends Migration
 }
 ```
 
+4. 使用Yii为account和article表生成模型。
+5. 创建`protected/controllers/DashboardController.php`：
 
 ```
 <?php
@@ -357,6 +370,8 @@ class DashboardController extends Controller
 }
 ```
 
+6. 创建`views/dashboard/index.php`：
+
 ```
 <?php
 use yii\helpers\Html;
@@ -372,14 +387,23 @@ use yii\helpers\Html;
 <?php endforeach ?>
 ```
 
+7. 运行`dashboard/random-operation`和`dashboard/random-article`几次，然后，运行`dashboard/index`你将会看到如下所示的截图：
+
 ![](../images/901.png)
+
+8. 在页面的底部，点击调试面板上数据库查询的数量：
 
 ![](../images/902.png)
 
+看到一个查询列表：
+
 ![](../images/903.png)
 
-
 ### 如何做...
+
+执行如下步骤：
+
+1. 我们需要修改控制器的代码：
 
 ```
 <?php
@@ -441,11 +465,17 @@ class DashboardController extends Controller
 }
 ```
 
+2. 完成了。现在，在加载`dashboard/index`几次以后，你将会看到只有1个查询，如下所示：
+
 ![](../images/904.png)
+
+此外，尝试运行`dashboard/random-operation`或者`dashboard/randomarticle`，并刷新`dashboard/index`。数据将会改变：
 
 ![](../images/905.png)
 
 ### 工作原理...
+
+
 
 ```
 public function behaviors()
