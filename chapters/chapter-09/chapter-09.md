@@ -475,7 +475,7 @@ class DashboardController extends Controller
 
 ### 工作原理...
 
-
+为了修改最少的代码，并达到最高的性能，我们使用一个过滤器来作全页缓存：
 
 ```
 public function behaviors()
@@ -496,6 +496,10 @@ public function behaviors()
     ];
 }
 ```
+
+先前的代码意味着我们在`index`动作中应用一个全页缓存。这个页面将会缓存1年，并且如果数据改变了，这个缓存将会刷新。因此，一般情况下，依赖工作如下：
+
+- 
 
 ### 参考
 
