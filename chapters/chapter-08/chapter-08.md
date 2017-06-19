@@ -1432,11 +1432,27 @@ $config = [
     ],
     'components' => [
     ],
-//...
+    //...
 ];
 ```
 
+```
+echo Nav::widget([
+    'options' => ['class' => 'navbar-nav navbar-right'],
+    'items' => [
+        ['label' => 'Home', 'url' => ['/site/index']],
+        ['label' => 'Log', 'url' => ['/log/default/index']],
+        ['label' => 'About', 'url' => ['/site/about']],
+        ['label' => 'Contact', 'url' => ['/site/contact']],
+        //...
+    ],
+]);
+NavBar::end();
+```
+
 ### 工作原理...
+
+
 
 ### 参考
 
@@ -1447,6 +1463,129 @@ $config = [
 
 ### 如何做...
 
+```
+<?php
+namespace app\smarty;
+use Smarty;
+use Yii;
+class ViewRenderer extends \yii\base\ViewRenderer
+{
+    public $cachePath = '@runtime/smarty/cache';
+    public $compilePath = '@runtime/smarty/compile';
+    /**
+     * @var Smarty
+     */
+    private $smarty;
+    public function init()
+    {
+        $this->smarty = new Smarty();
+        $this->smarty->setCompileDir(Yii::getAlias($this->compilePath));
+        $this->smarty->setCacheDir(Yii::getAlias($this->cachePath));
+        $this->smarty->setTemplateDir([
+            dirname(Yii::$app->getView()->getViewFile()),
+            Yii::$app->getViewPath(),
+        ]);
+    }
+    public function render($view, $file, $params)
+    {
+        $templateParams = empty($params) ? null : $params;
+        $template = $this->smarty->createTemplate($file, null,
+            null, $templateParams, false);
+        $template->assign('app', \Yii::$app);
+        $template->assign('this', $view);
+        return $template->fetch();
+    }
+}
+```
+
+
+```
+'components' => [
+    //....
+    'view' => [
+        'renderers' => [
+            'tpl' => [
+                'class' => 'app\smarty\ViewRenderer',
+            ],
+        ],
+    ],
+    //...
+];
+```
+
+```
+<?php
+namespace app\controllers;
+use yii\web\Controller;
+class SmartyController extends Controller
+{
+    public function actionIndex()
+    {
+        return $this->render('index.tpl', [
+            'name' => 'Bond',
+        ]);
+    }
+}
+```
+
+```
+<div class="smarty-index">
+    <h1>Smarty Example</h1>
+    <p>Hello, {$name}!</p>
+</div>
+```
+
+```
+<?php
+namespace yii\base;
+abstract class ViewRenderer extends Component
+{
+    /**
+     * Renders a view file.
+     *
+     * This method is invoked by [[View]] whenever it tries to render a view.
+     * Child classes must implement this method to render the given view file.
+     *
+     * @param View $view the view object used for rendering the file.
+     * @param string $file the view file.
+     * @param array $params the parameters to be passed to the view file.
+     * @return string the rendering result
+     */
+    abstract public function render($view, $file, $params);
+}
+```
+
+```
+class ViewRenderer extends \yii\base\ViewRenderer
+{
+    public $cachePath = '@runtime/smarty/cache';
+    public $compilePath = '@runtime/smarty/compile';
+    private $smarty;
+    public function init()
+    {
+        $this->smarty = new Smarty();
+        $this->smarty->setCompileDir(Yii::getAlias($this->compilePath));
+        $this->smarty->setCacheDir(Yii::getAlias($this->cachePath));
+        $this->smarty->setTemplateDir([
+            dirname(Yii::$app->getView()->getViewFile()),
+            Yii::$app->getViewPath(),
+        ]);
+    }
+//…
+}
+```
+
+```
+public function render($view, $file, $params)
+{
+    $templateParams = empty($params) ? null : $params;
+    $template = $this->smarty->createTemplate($file, null, null,
+        $templateParams, false);
+    $template->assign('app', \Yii::$app);
+    $template->assign('this', $view);
+    return $template->fetch();
+}
+```
 
 ### 工作原理...
 
@@ -1458,10 +1597,218 @@ $config = [
 
 ### 如何做...
 
+```
+echo Nav::widget([
+    'options' => ['class' => 'navbar-nav navbar-right'],
+    'items' => [
+        ['label' => Yii::t('app/nav', 'Home'), 'url' => ['/site/index']],
+        ['label' => Yii::t('app/nav', 'About'), 'url' => ['/site/about']],
+        ['label' => Yii::t('app/nav', 'Contact'), 'url' => ['/site/contact']],
+        //...
+    ],
+]);
+```
+
+
+```
+$this->title = Yii::t('app', 'Contact');
+$this->params['breadcrumbs'][] = $this->title;
+```
+
+```
+<div class="form-group">
+<?= Html::submitButton(Yii::t('app', 'Submit'), ['class' => 'btn btn-primary'']) ?>
+</div>
+```
+
+```
+<p>
+<?= Yii::t('app', 'The above error occurred while the Web server was processing your request.') ?>
+</p>
+```
+
+```
+class LoginForm extends Model
+{
+    ...
+    public function attributeLabels()
+    {
+        return [
+            'username' => Yii::t('app/user', 'Username'),
+            'password' => Yii::t('app/user', 'Password'),
+            'rememberMe' => Yii::t('app/user', 'Remember Me'),
+        ];
+    }
+}
+```
+
+
+```
+class ContactForm extends Model
+{
+    ...
+    public function attributeLabels()
+    {
+        return [
+            'name' => Yii::t('app/contact', 'Name'),
+            'email' => Yii::t('app/contact', 'Email'),
+            'subject' => Yii::t('app/contact', 'Subject'),
+            'body' => Yii::t('app/contact', 'Body'),
+            'verifyCode' => Yii::t('app', 'Verification Code'),
+        ];
+    }
+}
+```
+
+
+```
+./yii message/config-template config/messages.php
+```
+
+```
+<?php
+return [
+    'sourcePath' => '@app',
+    'languages' => ['de', 'fr'],
+    'translator' => 'Yii::t',
+    'sort' => false,
+    'removeUnused' => false,
+    'markUnused' => true,
+    'only' => ['*.php'],
+    'except' => [
+        '.svn',
+        '.git',
+        '.gitignore',
+        '.gitkeep',
+        '.hgignore',
+        '.hgkeep',
+        '/messages',
+        '/vendor',
+    ],
+    'format' => 'php',
+    'messagePath' => '@app/messages',
+    'overwrite' => true,
+    'ignoreCategories' => [
+        'yii',
+    ],
+];
+```
+
+
+```
+./yii message config/messages.php
+```
+
+
+```
+messages
+├── de
+│   ├── app
+│   │   ├── contact.php
+│   │   ├── nav.php
+│   │   └── user.php
+│   └── app.php
+└── fr
+    ├── app
+    │   ├── contact.php
+    │   ├── nav.php
+    │   └── user.php
+    └── app.php
+```
+
+```
+<?php
+...
+return [
+    'Body' => '',
+    'Email' => '',
+    'Name' => '',
+    'Subject' => '',
+];
+```
+
+```
+<?php
+...
+return [
+    'Password' => 'Passwort',
+    'Remember Me' => 'Erinnere dich an mich',
+    'Username' => 'Benutzername',
+];
+```
+
+
+```
+$config = [
+    'id' => 'basic',
+    'basePath' => dirname(__DIR__),
+    'bootstrap' => ['log'],
+    'components' => [
+        //…
+        'i18n' => [
+            'translations' => [
+                'app*' => [
+                    'class' => 'yii\i18n\PhpMessageSource',
+                    'sourceLanguage' => 'en-US',
+                ],
+            ],
+        ],
+        'db' => require(__DIR__ . '/db.php'),
+    ],
+    'params' => $params,
+];
+```
+
+```
+$config = [
+    'id' => 'basic',
+    'language' => 'de',
+    'basePath' => dirname(__DIR__),
+    'bootstrap' => ['log'],
+    ...
+];
+```
+
 ### 工作原理...
 
+```
+$config = [
+    'id' => 'basic',
+    'language' => 'de',
+    ...
+];
+```
 
-#### 准备
+```
+Yii::$app->language = 'fr';
+```
+
+
+```
+<?php
+namespace app\bootstrap;
+use yii\base\BootstrapInterface;
+class LanguageBootstrap implements BootstrapInterface
+{
+    public function bootstrap($app)
+    {
+        if (!$app->user->isGuest) {
+            $app->language = $app->user->identity->lang;
+        }
+    }
+}
+```
+
+
+```
+$config = [
+    'id' => 'basic',
+    'basePath' => dirname(__DIR__),
+    'bootstrap' => ['log', 'app'bootstrap\LanguageBoostrap'],
+    ...
+];
+```
+
 
 
 ### 参考

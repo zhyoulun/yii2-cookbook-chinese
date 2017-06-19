@@ -588,15 +588,183 @@ Image::crop('path/to/image.jpg', 100, 100, ManipulatorInterface::THUMBNAIL_OUTBO
 
 ## MongoDB驱动
 
+
+
 ### 准备
 
 ###如何做...
 
+```
+mongo
+> use mydatabase
+```
+
+```
+return [
+    // ...
+    'components' => [
+        // ...
+        'mongodb' => [
+            'class' => '\yii\mongodb\Connection',
+            'dsn' => 'mongodb://localhost:27017/mydatabase',
+        ],
+    ],
+];
+```
+
+```
+return [
+    // ...
+    'controllerMap' => [
+        'mongodb-migrate' => 'yii\mongodb\console\controllers\MigrateController'
+    ],
+];
+```
+
+```
+php yii mongodb-migrate/create create_customer_collection
+```
+
+```
+<?php
+use yii\mongodb\Migration;
+class m160201_102003_create_customer_collection extends Migration
+{
+    public function up()
+    {
+        $this->createCollection('customer');
+    }
+    public function down()
+    {
+        $this->dropCollection('customer');
+    }
+}
+```
+
+
+```
+php yii mongodb-migrate/up
+```
+
+```
+<?php
+if (YII_ENV_DEV) {
+    // configuration adjustments for 'dev' environment
+    $config['bootstrap'][] = 'debug';
+    $config['modules']['debug'] = [
+        'class' => 'yii\debug\Module',
+        'panels' => [
+            'mongodb' => [
+                'class' => 'yii\mongodb\debug\MongoDbPanel',
+            ],
+        ],
+    ];
+    $config['bootstrap'][] = 'gii';
+    $config['modules']['gii'] = [
+        'class' => 'yii\gii\Module',
+        'generators' => [
+            'mongoDbModel' => [
+                'class' => 'yii\mongodb\gii\model\Generator'
+            ]
+        ],
+    ];
+}
+```
+
+```
+<?php
+namespace app\models;
+use Yii;
+use yii\mongodb\ActiveRecord;
+/**
+ * This is the model class for collection "customer".
+ *
+ * @property \MongoId|string $_id
+ * @property mixed $name
+ * @property mixed $email
+ * @property mixed $address
+ * @property mixed $status
+ */
+class Customer extends ActiveRecord
+{
+    public static function collectionName()
+    {
+        return 'customer';
+    }
+    public function attributes()
+    {
+        return [
+            '_id',
+            'name',
+            'email',
+            'address',
+            'status',
+        ];
+    }
+    public function rules()
+    {
+        return [
+            [['name', 'email', 'address', 'status'], 'safe']
+        ];
+    }
+    public function attributeLabels()
+    {
+        return [
+            '_id' => 'ID',
+            'name' => 'Name',
+            'email' => 'Email',
+            'address' => 'Address',
+            'status' => 'Status',
+        ];
+    }
+}
+```
+
 #### 基本用法
+
+```
+$collection = Yii::$app->mongodb->getCollection('customer');$collection->insert(['name' => 'John Smith', 'status' => 1]);
+```
+
+
+```
+use yii\mongodb\Query;
+$query = new Query;
+// compose the query
+$query->select(['name', 'status'])
+    ->from('customer')
+    ->limit(10);
+// execute the query
+$rows = $query->all();
+```
 
 #### 注意
 
+```
+$query = new \yii\mongodb\Query;
+$row = $query->from('item')
+    ->where(['_id' => $id]) // implicit typecast to \MongoId
+    ->one();
+```
+
+```
+$row = $query->from('customer')->one();
+var_dump($row['_id']); // outputs:
+"object(MongoId)"var_dump((string)$row['_id']);
+```
+
 ### 工作原理...
+
+```
+use yii\data\ActiveDataProvider;
+use app\models\Customer;
+$provider = new ActiveDataProvider([
+    'query' => Customer::find(),
+    'pagination' => [
+        'pageSize' => 10,
+    ]
+]);
+```
 
 ### 参考
 
@@ -606,11 +774,116 @@ Image::crop('path/to/image.jpg', 100, 100, ManipulatorInterface::THUMBNAIL_OUTBO
 
 ### 如何做...
 
+```
+return [
+    //....
+    'components' => [
+        'elasticsearch' => [
+            'class' => 'yii\elasticsearch\Connection',
+            'nodes' => [
+                ['http_address' => '127.0.0.1:9200'],
+                // configure more hosts if you have a cluster
+            ],
+        ],
+    ]
+];
+```
+
+
+
 #### 使用查询类
+
+```
+use \yii\elasticsearch\Query;
+$query = new Query;
+$query->fields('id, name')
+    ->from('myindex', 'users')
+    ->limit(10);
+$query->search();
+```
+
+```
+$command = $query->createCommand();
+$rows = $command->search();
+```
 
 #### 使用ActiveRecord
 
+```
+class Buyer extends \yii\elasticsearch\ActiveRecord
+{
+    public function attributes()
+    {
+        return ['id', 'name', 'address', 'registration_date'];
+    }
+    public function getOrders()
+    {
+        return $this->hasMany(Order::className(), ['buyer_id' => 'id'])->orderBy('id');
+    }
+}
+```
+
+```
+class Order extends \yii\elasticsearch\ActiveRecord
+{
+    public function attributes()
+    {
+        return ['id', 'user_id', 'date'];
+    }
+    public function getBuyer()
+    {
+        return $this->hasOne(Customer::className(), ['id' => 'buyer_id']);
+    }
+}
+```
+
+```
+$buyer = new Buyer();
+$buyer>primaryKey = 1; // it equivalent to $customer->id = 1;
+$buyer>name = 'test';
+$buyer>save();
+$buyer = Buyer::get(1);
+$buyer = Buyer::mget([1,2,3]);
+$buyer = Buyer::find()->where(['name' => 'test'])->one();
+```
+
+```
+$result = Article::find()->query(["match" => ["title" =>
+"yii"]])->all();
+$query = Article::find()->query([
+    "fuzzy_like_this" => [
+        "fields" => ["title", "description"],
+        "like_text" => "Some search text",
+        "max_query_terms" => 12
+    ]
+]);
+$query->all();
+```
+
+```
+$query->addStatisticalFacet('click_stats', ['field' => 'visit_count']);
+$query->search();
+```
+
 #### 使用ElasticSearch调试板
+
+
+```
+if (YII_ENV_DEV) {
+    // configuration adjustments for 'dev' environment
+    $config['bootstrap'][] = 'debug';
+    $config['modules']['debug'] = [
+        'class' => 'yii\debug\Module',
+        'panels' => [
+            'elasticsearch' => [
+                'class' => 'yii\elasticsearch\DebugPanel',
+            ],
+        ],
+    ];
+    $config['bootstrap'][] = 'gii';
+    $config['modules']['gii'] = 'yii\gii\Module';
+}
+```
 
 ### 工作原理...
 
@@ -622,11 +895,86 @@ Image::crop('path/to/image.jpg', 100, 100, ManipulatorInterface::THUMBNAIL_OUTBO
 
 ### 准备
 
+```
+use yii\db\Schema;
+use yii\db\Migration;
+class m160201_154207_create_customer_table extends Migration
+{
+    public function up()
+    {
+        $tableOptions = null;
+        if ($this->db->driverName === 'mysql') {
+            $tableOptions =
+                'CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE=InnoDB';
+        }
+        $this->createTable('{{%customer}}', [
+            'id' => Schema::TYPE_PK,
+            'name' => Schema::TYPE_STRING . ' NOT NULL',
+            'email' => Schema::TYPE_STRING . ' NOT NULL',
+            'address' => Schema::TYPE_STRING,
+        ], $tableOptions);
+    }
+    public function down()
+    {
+        $this->dropTable('{{%customer}}');
+    }
+}
+```
+
+```
+php yii migrate/up
+```
+
 ### 如何做...
 
 #### 使用GUI
 
+```
+if (YII_ENV_DEV) {
+    $config['bootstrap'][] = 'gii';
+    $config['modules']['gii'] = [
+        'class' => 'yii\gii\Module',
+    ];
+}
+```
+
+```
+defined('YII_ENV') or define('YII_ENV', 'dev');
+```
+
+```
+$config['modules']['gii'] = [
+    'class' => 'yii\gii\Module',
+    allowedIPs = ['127.0.0.1', '::1', '192.168.0.*'],
+];
+```
+
 #### 使用CLI
+
+```
+return [
+    // ...
+    'modules' => [
+        'gii' => 'yii\gii\Module',
+    ],
+    // ...
+];
+```
+
+```
+php yii help gii
+php yii help gii/model
+```
+
+```
+php yii gii/model --tableName=customer --modelClass=Customer --useTablePrefix=1
+```
+
+```
+php yii gii/crud --modelClass=app\\models\\Customer \
+    --searchModelClass=app\\models\\CustomerSearch \
+    --controllerClass=app\\controllers\\CustomerController
+```
 
 ### 工作原理...
 
@@ -638,11 +986,92 @@ Image::crop('path/to/image.jpg', 100, 100, ManipulatorInterface::THUMBNAIL_OUTBO
 
 ### 如何做...
 
+```
+<?php
+use yii\widgets\Pjax;
+?>
+<?php Pjax::begin(); ?>
+    <?= GridView::widget([...]); ?>
+<?php Pjax::end(); ?>
+```
+
+```
+<div id="w1">
+    <div id="w2" class="grid-view">...</div>
+</div>
+<script type="text/javascript">jQuery(document).ready(function () {
+    jQuery(document).pjax("#w1 a", "#w1", {...});
+});</script>
+```
+
 #### 指定一个自定义ID
+
+```
+public function actionIndex()
+{
+    $dataProvider = ...;
+    if (Yii::$app->request->isPjax) {
+        return $this->renderPartial('_items', [
+            'dataProvider' => $dataProvider,
+        ]);
+    } else {
+        return $this->render('index', [
+            'dataProvider' => $dataProvider,
+        ]);
+    }
+}
+```
+
+```
+<nav id="w0">...</nav> // Main navigation
+<ul id="w1">...</ul> // Breadcrumbs widget
+<div id="w2">...</div> // Pjax widget
+```
+
+```
+<div id="w0">...</div> // Pjax widget
+```
+
+```
+<?php Pjax::begin(['id' => 'countries']) ?>
+    <?= GridView::widget([...]); ?>
+<?php Pjax::end() ?>
+```
+
+
 
 #### 使用ActiveForm
 
+```
+<?php
+use \yii\widgets\Pjax
+use \yii\widgets\ActiveForm;
+<?php yii\widgets\Pjax::begin(['id' => 'my-block']) ?>
+<?php $form = ActiveForm::begin(['options' => [
+    'data-pjax' => true,
+]]); ?>
+<?= $form->field($model, 'name') ?>
+<?php ActiveForm::end(); ?>
+<?php Pjax::end(); ?>
+```
+
 #### 使用客户端脚本
+
+```
+<?php $this->registerJs('
+    $("#my-block").on("pjax:complete", function() {
+        alert('Pjax is completed');
+    });
+'); ?>
+```
+
+```
+<?php $this->registerJs('
+    $("#my-button").on("click", function() {
+        $.pjax.reload({container:"#my-block"});
+    });
+'); ?>
+```
 
 ### 工作原理...
 
@@ -654,9 +1083,54 @@ Image::crop('path/to/image.jpg', 100, 100, ManipulatorInterface::THUMBNAIL_OUTBO
 
 ### 如何做...
 
+```
+return [
+    //....
+    'components' => [
+        'redis' => [
+            'class' => 'yii\redis\Connection',
+            'hostname' => 'localhost',
+            'port' => 6379,
+            'database' => 0,
+        ],
+    ]
+];
+```
+
 #### 直接使用方法
 
+```
+Yii::$app->redis->executeCommand('hmset', ['test_collection', 'key1', 'val1', 'key2', 'val2']);
+```
+
+```
+Yii::$app->redis->hmset('test_collection', 'key1', 'val1', 'key2', 'val2')
+```
+
 #### 使用ActiveRecord
+
+```
+class Customer extends \yii\redis\ActiveRecord
+{
+    public function attributes()
+    {
+        return ['id', 'name', 'address', 'registration_date'];
+    }
+    public function getOrders()
+    {
+        return $this->hasMany(Order::className(), ['customer_id' => 'id']);
+    }
+}
+```
+
+```
+$customer = new Customer();
+$customer->name = 'test';
+$customer->save();
+echo $customer->id; // id will automatically be incremented if not set explicitly
+// find by query
+$customer = Customer::find()->where(['name' => 'test'])->one();
+```
 
 ### 工作原理...
 
