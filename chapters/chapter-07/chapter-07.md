@@ -579,25 +579,44 @@ Image::crop('path/to/image.jpg', 100, 100, ManipulatorInterface::THUMBNAIL_OUTBO
 ->save('path/to/destination/image.jpg', ['quality' => 90]);
 ```
 
-
+在`\yii\imagine\BaseImage`的源代码中查看所有支持的方法以及细节。
 
 ### 工作原理...
 
+这个扩展准备用户数据，创建一个原始的Imagine对象，并调用对应的方法。所有的方法都会返回原始的iamge对象。你可以继续操作这个图像，或者将结果保存到你的磁盘上。
+
 ### 参考
 
+- 欲了解更多关于这个扩展的信息，参考如下地址：
+    + [http://www.yiiframework.com/doc-2.0/ext-imagine-index.html](http://www.yiiframework.com/doc-2.0/ext-imagine-index.html)
+    + [https://github.com/yiisoft/yii2-imagine](https://github.com/yiisoft/yii2-imagine)
+- 欲了解更多关于原始库的信息，参考[http://imagine.readthedocs.org/en/latest/](http://imagine.readthedocs.org/en/latest/)。
 
 ## MongoDB驱动
 
-
+这个扩展为Yii2框架提供了MongoDB的集成，允许你通过ActiveRecord风格的模型使用MongoDB collection的记录。
 
 ### 准备
 
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 从[https://docs.mongodb.org/manual/installation/](https://docs.mongodb.org/manual/installation/)使用正确的安装过程为你的系统安装MongoDB。
+3. 安装`php5-mongo` PHP扩展
+4. 使用如下命令安装组件：
+
+```
+composer require yiisoft/yii2-mongodb
+```
+
 ###如何做...
+
+1. 首先，创建新的MongoDB数据库。在`mongo-client`shell中运行它，并输入数据库的名称：
 
 ```
 mongo
 > use mydatabase
 ```
+
+2. 添加连接信息到你的`components`配置部分：
 
 ```
 return [
@@ -612,6 +631,8 @@ return [
 ];
 ```
 
+3. 添加新的控制台控制器到你的控制台配置文件中：
+
 ```
 return [
     // ...
@@ -621,9 +642,13 @@ return [
 ];
 ```
 
+4. 使用shell命令创建新的migration：
+
 ```
 php yii mongodb-migrate/create create_customer_collection
 ```
+
+5. 输入如下代码到`up()`和`down()`方法中：
 
 ```
 <?php
@@ -641,10 +666,13 @@ class m160201_102003_create_customer_collection extends Migration
 }
 ```
 
+6. 应用migration：
 
 ```
 php yii mongodb-migrate/up
 ```
+
+7. 添加MongoDB调试板，以及模型生成器到你的配置中：
 
 ```
 <?php
@@ -670,6 +698,17 @@ if (YII_ENV_DEV) {
     ];
 }
 ```
+
+8. 运行Gii生成器：
+
+![](../images/705.png)
+
+9. 启动新的`MongoDB Model Generator`来为你的collection生成新的模型：
+
+![](../images/706.png)
+
+10. 点击**预览**和**生成**按钮
+11. 检查你是否有了新的模型`app\models\Customer`：
 
 ```
 <?php
@@ -720,12 +759,33 @@ class Customer extends ActiveRecord
 }
 ```
 
+12. 再次运行Gii，并生成CRUD：
+
+![](../images/707.png)
+
+13. 检查你已经生成了`CustomerController`类，并运行新的customer管理页面：
+
+![](../images/708.png)
+
+14. 你可以创建、更新和删除你的顾客数据。
+15. 在页面的底部查看**调试**板：
+
+![](../images/709.png)
+
+16. 你可以看到整个MongoDB查询数以及完整的执行时间。点击计数badge和查询指示：
+
+![](../images/710.png)
+
 #### 基本用法
 
+你可以通过`\yii\mongodb\Collection`实例访问数据库和集合：
+
 ```
-$collection = Yii::$app->mongodb->getCollection('customer');$collection->insert(['name' => 'John Smith', 'status' => 1]);
+$collection = Yii::$app->mongodb->getCollection('customer');
+$collection->insert(['name' => 'John Smith', 'status' => 1]);
 ```
 
+为了执行`find`查询，你应该使用`\yii\mongodb\Query`：
 
 ```
 use yii\mongodb\Query;
@@ -738,7 +798,7 @@ $query->select(['name', 'status'])
 $rows = $query->all();
 ```
 
-#### 注意
+**注意**：MongoDB文档id（“_id”字段）不是数量，是一个`\MongoId`类的实例。你不需要关心从整形或者字符串`$id`转换为`\MongoId`，因为查询创建会自动转换：
 
 ```
 $query = new \yii\mongodb\Query;
@@ -747,13 +807,20 @@ $row = $query->from('item')
     ->one();
 ```
 
+为了获取真实的Mongo ID字符串，你应该将`\MongoId`做类型转为字符串：
+
 ```
+$query = new Query;
 $row = $query->from('customer')->one();
 var_dump($row['_id']); // outputs:
 "object(MongoId)"var_dump((string)$row['_id']);
 ```
 
 ### 工作原理...
+
+这个扩展的`Query`、`ActiveQuery`以及`ActiveRecord`继承了`yii\db\QueryInterface`和`yii\db\BaseActiveRecord`。因此他们和框架内置的`Query`、`ActiveQuery`以及`ActiveRecord`是兼容的。
+
+你可以使用
 
 ```
 use yii\data\ActiveDataProvider;
@@ -1140,17 +1207,7 @@ $customer = Customer::find()->where(['name' => 'test'])->one();
 
 
 
-![](../images/705.png)
 
-![](../images/706.png)
-
-![](../images/707.png)
-
-![](../images/708.png)
-
-![](../images/709.png)
-
-![](../images/710.png)
 
 ![](../images/711.png)
 
