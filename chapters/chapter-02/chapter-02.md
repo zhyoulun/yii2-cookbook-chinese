@@ -807,15 +807,29 @@ use yii\helpers\Url;
 
 ### 工作原理...
 
-每一个控制器可以从独立中创建，
+每一个控制器可以从独立动作中创建，就像是在拼图。区别是你可以是独立动作非常灵活，并在很多地方复用。
+
+在我们的动作中，我们定义了`modelClass`公共属性，它能在`PostController`的`actions`方法中设置一个指定的类。
 
 ### 参考
 
+欲了解更多信息， 参考[http://www.yiiframework.com/doc-2.0/guide-structurecontrollers.html#standalone-actions](http://www.yiiframework.com/doc-2.0/guide-structurecontrollers.html#standalone-actions)。
+
 ## 创建一个自定义过滤器
+
+过滤器是一种对象，它会在控制器动作之前或者之后运行。例如，一个访问控制过滤器可能会在动作之前运行，确保它们只能被特殊的终端用户访问；一个内容压缩过滤器可能会在动作之后运行，用于在发送给终端用户之前压缩响应内容。
+
+一个过滤器可能由一个前处理器（在动作之前执行）和/或一个后处理器（在动作之后执行）。过滤器本质上是一种特殊的行为。因此，使用过滤器和使用行为是一样的。
+
+假设我们有一个web应用，它提供了一个用户界面，只在指定的小时内工作，例如从上午10点到下午6点。
 
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+
 ### 如何做...
+
+1. 创建一个控制器`@app/controllers/TestController.php`：
 
 ```
 <?php
@@ -842,6 +856,7 @@ class TestController extends Controller
 }
 ```
 
+2. 创建一个新的过滤器`@app/components/CustomFilter.php`：
 
 ```
 <?php
@@ -879,10 +894,13 @@ class CustomFilter extends ActionFilter
 }
 ```
 
+3. 如果你在指定的时间之外访问页面，你将得到如下结果：
 
 ![](../images/210.png)
 
 ### 工作原理...
+
+首先，我们添加一些代码到我们的控制器中，它实现了我们的自定义过滤器：
 
 ```
 public function behaviors()
@@ -895,17 +913,33 @@ return [
 }
 ```
 
+默认情况下，过滤器会应用到控制器所有的动作上，但是我们可以指定哪些动作可以被应用，或者哪些动作不被应用。
+
+你有两个动作——`beforeAction`和`afterAction`。第一个会在控制器动作执行之前运行，第二个会在之后运行。
+
+在我们的简单的例子中，我们定义了一个条件，如果时间早于早上10点，不允许访问网站，并且在after方法中，我们只是运行了一个trace方法，如果当前路径是`test/index`的话。
+
+你可以在debugger中看到这个结果，在`log`部分：
 
 ![](../images/211.png)
 
+在真实的应用中，过滤器是比较复杂的，并且，Yii2提供了需要内置的过滤器，例如core、authentication、content negotiator，HTTP cache end等等。
+
 ### 参考
+
+欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/guidestructure-filters.html](http://www.yiiframework.com/doc-2.0/guidestructure-filters.html)。
 
 ## 展示静态页面
 
+如果你有一些静态页面，并且不会经常修改他们，那么不值得查询数据库，并为他们做页面管理。
+
 ### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 
 ### 如何做...
 
+1. 创建一个测试控制器文件`@app/controllers/TestController.php`：
 
 ```
 <?php
@@ -924,7 +958,7 @@ class TestController extends Controller
 }
 ```
 
-
+2. 现在，将你的页面放进`views/test/pages`，命名为`index.php`和`contact.php`。`index.php`文件的内容如下：
 
 ```
 <h1>Index</h1>
@@ -934,16 +968,28 @@ Contact.php content is:
 <p>Our contact: contact@localhost</p>
 ```
 
+3. 现在你可以通过访问URL检查你的页面
+4. `http://yii-book.app/index.php?r=test/page&view=contact`：
 
 ![](../images/212.png)
 
+5. 或者，如果你配置干净的URL格式的话，你可以访问`http://yii-book.app/test/page/view/about`。
+
 ### 工作原理...
 
+我们连接了外部动作，名叫`\yii\web\ViewAction`，它只是尝试去找到一个视图，和`$_GET`参数提供的名称一致。如果找到了，展示它。如果找不到，将会给一个`404 not found`的页面。如果没有设置`viewParam`，将会使用默认值`defaultView`。
 
 ### 更多...
 
-
 #### 关于ViewAction
+
+`\yii\web\ViewAction`有一些有用的参数。列表如下：
+
+| 参数名称 | 描述 |
+|--|--|
+| defaultView | 如果用户没有在GET参数中提供`yii\web\ViewAction::$viewParam`，默认视图的名称。默认值是'index'。格式应该是`path/to/view`。同`GET`参数中的类似 |
+| layout | 应用到请求视图的布局名称。它会在视图被渲染前分配给`yii\base\Controller::$layout`。默认值是null，意味着使用控制器的布局。如果为false，不使用布局。 |
+| viewParam | 包含请求视图名称 |
 
 #### 配置URL规则
 
