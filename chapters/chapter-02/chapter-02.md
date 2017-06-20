@@ -989,23 +989,42 @@ Contact.php content is:
 |--|--|
 | defaultView | 如果用户没有在GET参数中提供`yii\web\ViewAction::$viewParam`，默认视图的名称。默认值是'index'。格式应该是`path/to/view`。同`GET`参数中的类似 |
 | layout | 应用到请求视图的布局名称。它会在视图被渲染前分配给`yii\base\Controller::$layout`。默认值是null，意味着使用控制器的布局。如果为false，不使用布局。 |
-| viewParam | 包含请求视图名称 |
+| viewParam | 包含请求视图名称`GET`参数的名称 |
+| viewPrefix | 这是一个字符串，会作为一个前缀附加到用户指定的视图名称上，构成一个完整的视图名称。例如，如果一个用户请求是`tutorial/chap1`，相应的视图名称是`pages/tutorial/chap1`，假设前缀是`pages`。真实的视图文件又`yii\base\View::findViewFile()`决定。 |
 
 #### 配置URL规则
+
+`ViewAction`动作为你提供了一种方式，可以用于修改你的控制器，但是这个URL看着像`http://yii-book.app/index.php?r=test/page&page=about`。为了使URL更短更可读，添加一个URL规则到`urlManager`组件：
 
 ```
 '<view:about>' => 'test/page'
 ```
 
+如果`urlManager`组件配置正确，你将会得到如下页面：
+
 ![](../images/213.png)
+
+为了配置`urlManager`组件，参考*配置URL规则*小节。
 
 ### 参考
 
+欲了解更多信息，参考如下地址：
+
+- [http://www.yiiframework.com/doc-2.0/yii-web-viewaction.html](http://www.yiiframework.com/doc-2.0/yii-web-viewaction.html)
+- [http://www.yiiframework.com/doc-2.0/guide-structure-views.html#rendering-static-pages](http://www.yiiframework.com/doc-2.0/guide-structure-views.html#rendering-static-pages)
+- *配置URL规则*小节
+
 ## 使用flash消息
+
+当你使用一个form编辑一个模型时，删除一个模型，或者做其它操作，这是一个好习惯，告诉用户是否工作正常，或者发生了错误。典型情况下，在一些动作之后，例如编辑一个form，一个重定向将会发生，并且我们需要在页面上展示一条信息。但是，我们应该如何将它从当前页面传递到重定向目标，然后清理干净？flash消息将会帮助我们。
 
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+
 ### 如何做...
+
+1. 创建一个控制器`@app/controllers/TestController.php`：
 
 ```
 <?php
@@ -1062,6 +1081,7 @@ class TestController extends Controller
 }
 ```
 
+2. 此外，创建`@app/views/common/alert.php`视图：
 
 ```
 <?php
@@ -1081,6 +1101,7 @@ use yii\bootstrap\Alert;
 <?php endif; ?>
 ```
 
+3. 创建视图`@app/views/test/index.php`：
 
 ```
 <?php
@@ -1091,6 +1112,7 @@ use yii\bootstrap\Alert;
 <p>There's a content of guest page</p>
 ```
 
+4. 创建视图`@app/views/test/user.php`：
 
 ```
 <?php
@@ -1101,19 +1123,29 @@ use yii\bootstrap\Alert;
 <p>There's a content of user page</p>
 ```
 
+5. 现在，如果你访问`http://yii-book.app/index.php?r=test/success`，你将会被重定向到`http://yii-book.app/index.php?r=test/index`，并展示了一条成功的消息：
 
 ![](../images/214.png)
 
+6. 此外，如果你访问`http://yii-book.app/index.php?r=test/error`，你将会被重重定向到相同的页面上，但是会得到一条错误消息。刷新`index`页面，消息将会隐藏：
+
 ![](../images/215.png)
 
+7. 尝试运行`http://yii-book.app/index.php?r=test/user`。你将会被重定向到`http://yii-book.app/index.php?r=test/index`，并会在`denyCallback`函数中执行并展示一条错误消息：
 
 ![](../images/216.png)
 
 ### 工作原理...
 
+我们使用`Yii::$app->session->('success', 'Everything went fine!')`设置一条flash消息。本质上，它保存了一条消息到一个session中，所以在最低等级上，我们的消息被保存在`$_SESSION`中，直到`Yii::$app->session->getFlash('success')`被调用，然后`$_SESSION`键会被删除。
+
+这个flash消息将会在请求中访问之后被自动删除。
+
 ### 更多...
 
 #### getAllFlashes()方法
+
+有时你需要处理所有的flashs。你可以使用一个简单的方式来处理它，如下所示：
 
 ```
 $flashes = Yii::$app->session->getAllFlashes();
@@ -1128,25 +1160,40 @@ $flashes = Yii::$app->session->getAllFlashes();
 
 #### removeAllFlashes()方法
 
+当你需要flush所有的flash时，使用下面的方法：
+
 ```
 Yii::$app->session->removeAllFlashes();
 ```
 
 #### removeFlash()方法
 
+当你需要移除指定的键，使用如下方法：
+
 ```
 Yii::$app->session->removeFlash('success');
 ```
 
+在这个例子中，我们添加一个非常有用的回调函数，它设置一条错误信息，并重定向到`test/index`页面上。
 
 ### 参考
 
+欲了解更多信息，参考：
+
+- [http://www.yiiframework.com/doc-2.0/yii-web-session.html](http://www.yiiframework.com/doc-2.0/yii-web-session.html)
+- [http://www.yiiframework.com/doc-2.0/yii-bootstrap-alert.html](http://www.yiiframework.com/doc-2.0/yii-bootstrap-alert.html)
+
 ## 在一个视图中使用控制器上下文
+
+Yii视图非常强大，并且有许多特性。其中一个就是你可以在一个视图中使用控制器上下文。所以，我们来试下吧。
 
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+
 ### 如何做...
 
+1. 创建`controllers/ViewController.php`：
 
 ```
 <?php
@@ -1169,25 +1216,39 @@ class ViewController extends Controller
 }
 ```
 
+2. 现在，我们创建`views/view.php`来展示我们可以做的事情：
 
 ```
 <h1><?= $this->context->pageTitle ?></h1>
 <p>Hello call. <?php $this->context->hello() ?></p>
 ```
 
+3. 为了测试它，你可以访问`/index.php?r=view/index&name=Alex`：
 
 ![](../images/217.png)
 
 ### 工作原理...
 
+我们在一个视图中使用`$this`来引用当前运行的控制器。当做这些事情的时候，我们可以调用一个控制器方法，并访问他的属性。最常使用的属性是`pageTitle`，它表示当前页面的标题。在视图中，有许多内置的方法特别有用，例如`renderPartials`和小组件。
 
 ### 更多...
 
+[http://www.yiiframework.com/doc-2.0/guide-structure-views.html#accessing-data-in-views](http://www.yiiframework.com/doc-2.0/guide-structure-views.html#accessing-data-in-views)地址包含了`CController`的API文档，这里你可以到方法的列表，这些你可以用在你的视图中。
+
 ## 部分复用视图
+
+Yii支持部分视图，所以，如果你有一个块，其中没有太多的逻辑，你希望可以复用，或者想实施电子邮件模板，部分视图是处理这种问题的正确方法。
+
+假设我们有两个Twitter账户，其中一个用与博客，另外一个用于公司活动，我们的目标是在指定的页面上输出Twitter时间线。
 
 ### 准备
 
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 为`php_net`和`yiiframework`两个用户在`https://twitter.com/settings/widgets/`创建Twitter小组件，并为每一个创建的小组件找到`data-widget-id`值。
+
 ### 如何做...
+
+1. 创建一个控制器`@app/controllers/BlogController.php`：
 
 ```
 <?php
@@ -1214,6 +1275,7 @@ class BlogController extends Controller
 }
 ```
 
+2. 创建一个名为`@app/views/common/twitter.php`的视图文件，并粘贴从Twitter复制过来的嵌入代码。你将会得到如下代码：
 
 ```
 <?php
@@ -1237,6 +1299,7 @@ class BlogController extends Controller
 <?php endif;?>
 ```
 
+3. 创建一个视图`@app/views/blog/index.php`：
 
 ```
 <?php
@@ -1262,6 +1325,7 @@ class BlogController extends Controller
 </div>
 ```
 
+4. 使用如下内容替换`@app/views/site/about.php`文件的内容：
 
 ```
 <?php
@@ -1283,23 +1347,38 @@ $this->title = 'About';
 </div>
 ```
 
+5. 尝试运行`index.php?r=blog/index`：
 
 ![](../images/218.png)
 
-![](../images/219.png)
+6. 尝试运行`index.php?r=site/about`：
 
+![](../images/219.png)
 
 ### 工作原理...
 
+在当前例子中，两个视图使用一个额外的参数渲染了`@app/views/common/twitter.php`，从而构成Twitter小组件。注意到视图可以在控制器、小组件或者其它任何地方渲染，方法是通过调用视图渲染方法。例如，`\yii\base\Controller::render`做和`\yii\base\View::render`相同的模板处理，不同点是前者不使用布局。
+
+在每一个视图文件中，我们可以使用$this访问View类的两个实例，所以任何视图文件都可以在其它任何视图中通过调用`render`方法调用。
 
 ### 更多...
 
+欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/guidestructureviews.html#rendering-views](http://www.yiiframework.com/doc-2.0/guidestructureviews.html#rendering-views)。
+
 ## 使用blocks
+
+Yii的一个特性是，你可以在你的视图中使用blocks。基本的思想是，你可以渲染一些输出，然后在一个视图中复用它。一个好的例子是，为你的布局定义额外的内容区域，然后在其它任何地方填充他们。
+
+在先前的版本中，Yii 1.1，blocks被叫做clips。
 
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+
 ### 如何做...
 
+1. 对于我们的例子，我们需要在我们的布局中定义两个区域——`beforeContent`和`footer`。
+2. 打开`@app/views/layouts/main.php`并插入
 
 ```
 <?php if(!empty($this->blocks['beforeContent'])) echo $this->blocks['beforeContent']; ?>
