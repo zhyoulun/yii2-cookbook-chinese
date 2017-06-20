@@ -1378,12 +1378,13 @@ Yii的一个特性是，你可以在你的视图中使用blocks。基本的思�
 ### 如何做...
 
 1. 对于我们的例子，我们需要在我们的布局中定义两个区域——`beforeContent`和`footer`。
-2. 打开`@app/views/layouts/main.php`并插入
+2. 打开`@app/views/layouts/main.php`并将如下内容插入到内容输出前：
 
 ```
 <?php if(!empty($this->blocks['beforeContent'])) echo $this->blocks['beforeContent']; ?>
 ```
 
+3. 然后，使用如下代码替换footer代码：
 
 ```
 <footer class="footer">
@@ -1398,6 +1399,7 @@ Yii的一个特性是，你可以在你的视图中使用blocks。基本的思�
 </footer>
 ```
 
+4. 完成了！然后，添加一个新的动作到`controllers/SiteController.php`，名叫`blocks`：
 
 ```
 public function actionBlocks()
@@ -1406,6 +1408,7 @@ public function actionBlocks()
 }
 ```
 
+5. 现在，创建一个视图文件`views/site/blocks.php`：
 
 ```
 <?php
@@ -1421,17 +1424,32 @@ $this->endBlock(); ?>
 <h1>Blocks usage example</h1>
 ```
 
+6. 现在，当你打开你的`/index.php?r=site/blocks`页面，你应该能在页面内容之前获得你的IP，以及一个build-with note in the footer：
+
 ![](../images/220.png)
 
 ### 工作原理...
 
+我们用代码标记一个区域，它会检查一个指定的block是否存在，并且如果这个block存在，这个代码就会输出它。然后，我们使用指定的控制器方法为我们定义的blocks记录内容，这两个方法是`beginBlock`和`endBlock`。
+
+从控制器，你可以很容易地通过`$this->view->blocks['blockID']`访问我们的block的变量。
+
 ### 更多...
+
+- *在一个视图中使用控制器上下文*小节
+- [http://www.yiiframework.com/doc-2.0/guide-structure-views.html#using-blocks](http://www.yiiframework.com/doc-2.0/guide-structure-views.html#using-blocks)
 
 ## 使用装饰器
 
+在Yii中，我们可以将内容封装到一个装饰器中。装饰器的常用方法是布局。当你使用你的控制器的渲染方法渲染一个视图的时候，Yii自动使用主布局装饰它。让我们创建一个简单的装饰器，它会正确的格式化引用。
+
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+
 ### 如何做...
+
+1. 首先，我们将会创建一个装饰器文件`@app/views/decorators/quote.php`：
 
 ```
 <div class="quote">
@@ -1439,6 +1457,7 @@ $this->endBlock(); ?>
 </div>
 ```
 
+2. 现在，使用如下代码替换`@app/views/site/index.php`文件的内容：
 
 ```
 <?php
@@ -1455,18 +1474,34 @@ use yii\widgets\ContentDecorator;
 <?php ContentDecorator::end();?>
 ```
 
+3. 现在，你的**Home**页面应该会如下所示：
+
 ![](../images/221.png)
 
 ### 工作原理...
 
+装饰器非常简单。`ContentDecorator::begin()`和`ContentDecorator::end()`之间的任何东西都会被渲染到一个`$content`变量中，并传递到一个装饰器模板中。然后，这个装饰器模板被渲染，并被插入到`ContentDecorator::end()`被调用的地方中。
+
+我们可以使用`ContentDecorator::begin()`第二个参数传递额外的变量到装饰器模板中，例如之前的例子中我们传递了author变量。
+
+注意我们使用了`@app/views/decorators/quote.php`作为视图路径。
+
 ### 参考
+
+- [http://www.yiiframework.com/doc-2.0/yii-widgets-contentdecorator.html](http://www.yiiframework.com/doc-2.0/yii-widgets-contentdecorator.html)提供了更多关于装饰器的详情
+- *在一个视图中使用控制器上下文*小节
 
 ## 定义多个布局
 
+大部分应用位所有的视图使用同一个布局。但是，有些情况需要使用多个布局。例如，一个应用在不同的页面上有不同的布局：博客有两个额外的列，文章有一个额外的列，归档没有额外的列。
+
 ### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 
 ### 如何做...
 
+1. 在`views/layouts`中创建两个布局：`blog`和`articles`。`blog`的代码如下：
 
 ```
 <?php $this->beginContent('//layouts/main')?>
@@ -1481,13 +1516,14 @@ use yii\widgets\ContentDecorator;
     </div>
     <div class="sidebar links">
         <ul>
-            <li><a href="http://yiiframework.com/">
-                    Yiiframework</a></li>
+            <li><a href="http://yiiframework.com/">Yiiframework</a></li>
             <li><a href="http://php.net/">PHP</a></li>
         </ul>
     </div>
 <?php $this->endContent()?>
 ```
+
+2. `articles`的代码如下：
 
 ```
 <?php
@@ -1510,6 +1546,8 @@ use yii\widgets\ContentDecorator;
 <?php $this->endContent() ?>
 ```
 
+3. 创建一个视图文件`views/site/content.php`：
+
 ```
 <h1>Title</h1>
 <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit,
@@ -1520,7 +1558,7 @@ aute irure dolor in reprehenderit in voluptate velit esse
 cillum dolore eu fugiat nulla pariatur.</p>
 ```
 
-
+4. 创建三个控制器，名叫`BlogController`、`ArticleController`、`PortfolioController`，每一个都一个index动作。`controllers/BlogController.php`文件内容如下：
 
 ```
 <?php
@@ -1536,7 +1574,7 @@ class BlogController extends Controller
 }
 ```
 
-
+5. `controllers/ArticleController.php`文件的内容如下：
 
 ```
 <?php
@@ -1552,7 +1590,7 @@ class ArticleController extends Controller
 }
 ```
 
-
+6. `controllers/PortfolioController.php`文件的内容如下：
 
 ```
 <?php
@@ -1567,22 +1605,45 @@ class PortfolioController extends Controller
 }
 ```
 
+7. 尝试运行`http://yii-book.app/?r=blog/index`：
+
 ![](../images/222.png)
 
+8. 尝试运行`http://yii-book.app/?r=article/index`：
+
 ![](../images/223.png)
+
+9. 尝试运行`http://yii-book.app/?r=portfolio/index`：
 
 ![](../images/224.png)
 
 ### 工作原理...
 
+我们为博客和文章定义了两个额外的布局。因为我们不想从主布局中拷贝和粘贴相同的部分，我们使用`$this->beginContent`和`$this->endContent`做额外的布局装饰器。
+
+所以，我们使用一个在文章布局的内部渲染的视图，作为主布局的`$content`。
+
 ### 参考
+
+- [http://www.yiiframework.com/doc-2.0/guide-structure-views.html#nested-layouts](http://www.yiiframework.com/doc-2.0/guide-structure-views.html#nested-layouts)提供了关于布局更多的细节
+- *在一个视图中使用控制器上下文*小节
+- *使用装饰器*小节
 
 ## 页码和数据排序
 
+在最新的Yii发布版本中，焦点从直接使用Active Record移到了grids、lists和data providers。但是，有时直接使用Active Record是更好的。下面我们来看如果列出分好页的AR记录，并有能力对他们进行排序。在这部分中，我们将会创建电影的一个列表，并通过数据库中的一些属性对他们进行排序。在我们的例子中，我们将会通过电影标题和租用率对他们进行排序。
+
 ### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 从[http://dev.mysql.com/doc/index-other.html](http://dev.mysql.com/doc/index-other.html)下载Sakila数据库。
+3. 执行下载的SQL：首先是schema，然后是数据。
+4. 在`config/main.php`中配置DB连接，来使用Sakila数据库。
+5. 使用Gii生成`Film`模型
 
 ### 如何做...
 
+1. 首先，你需要创建`@app/controllers/FilmController.php`：
 
 ```
 <?php
@@ -1618,6 +1679,7 @@ class FilmController extends Controller
 }
 ```
 
+2. 现在，让我们实现`@app/views/film/index.php`：
 
 ```
 <?php
@@ -1648,10 +1710,23 @@ use yii\widgets\LinkPager;
 ]); ?>
 ```
 
+3. 尝试访问`http://yii-book.app/index.php?r=film/index`。你应该能得到一个工作的分页，和允许通过电影标题和租用率排序的链接：
+
 ![](../images/225.png)
 
 ### 工作原理...
 
+首先，我们得到了全部模型的数量，通过将这个数传递给`Pagination`实例的`totalCount`变量，初始化了新的分页组件实例。然后我们使用`$page->pageSize`字段为我们的分页设置每页的大小。然后，我们为这个模型创建了一个sorter实例，指定了我们希望用作排序的模型属性，并通过调用`orderBy`应用排序条件到查询，然后将其传递给`$sort->orders`做为一个参数。然后，我们调用了`all()`从DB中获取记录。
+
+现在，我们有了模型的列表、页面以及被用于link pager的数据，以及我们用于生成排序连接的sorter。
+
+在这个视图中，我们使用我们搜集的数据。首先，我们使用`Sort::link`生成链接。然后，我们列出模型。最后，使用*LinkPager*小组件，我们渲染了分页控制。
+
 ### 参考
 
+访问如下地址，获取更多关于分页和排序的信息：
 
+- [http://www.yiiframework.com/doc-2.0/yii-data-pagination.html](http://www.yiiframework.com/doc-2.0/yii-data-pagination.html)
+- [http://www.yiiframework.com/doc-2.0/yii-data-sort.html](http://www.yiiframework.com/doc-2.0/yii-data-sort.html)
+- [http://www.yiiframework.com/doc-2.0/guide-output-pagination.html](http://www.yiiframework.com/doc-2.0/guide-output-pagination.html)
+- [http://www.yiiframework.com/doc-2.0/guide-output-sorting.html](http://www.yiiframework.com/doc-2.0/guide-output-sorting.html)
