@@ -1,10 +1,34 @@
 # 第二章 路由，控制器和视图
 
+在本章中，我们将会讨论如下话题：
+
+- 配置URL规则
+- 生成URL
+- 在URL规则中使用正则表达式
+- 使用一个基础控制器
+- 使用独立动作
+- 创建一个自定义过滤器
+- 展示静态页面
+- 使用flash消息
+- 在视图中使用控制器上下文
+- 部分复用视图
+- 使用blocks
+- 使用装饰器
+- 定义多个布局
+- 翻页和数据排序
+
 ## 介绍
+
+本章将会帮助你学习一些方便的东西：Yii URL路由，控制器和视图。你将能够使你的控制器和视图更加灵活。
 
 ## 配置URL规则
 
+在本小节中，我们将会学习如何配置URL规则。在开始以前，我们创建一个应用。
+
 ### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 使用如下代码创建`@app/controllers/TestController.php`控制器：
 
 ```
 <?php
@@ -28,6 +52,9 @@ class TestController extends Controller
 }
 ```
 
+这就是我们即将做自定义URL的控制器。
+
+3. 为了使用干净的URL，需要配置你的应用服务器。如果你在使用带有`mod_rewrite`的Apache，并打开了`AllowOverride`，那么你就可以添加如下内容到`@web`文件夹下的`.htaccess`文件中：
 
 ```
 Options +FollowSymLinks
@@ -40,7 +67,11 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.php
 ```
 
+### 如何做...
 
+我们的网站将会在`/home`展示index页面，并且其它页面在`/page/<alias_ here>`。此外，`/about`应该定向到带有alias about的页面：
+
+1. 在`@app/config/web.php`文件中添加`urlManager`组件：
 
 ```
 'components' => [
@@ -57,45 +88,76 @@ RewriteRule . index.php
 ],
 ```
 
+保存过你的改动以后，你应该能浏览如下URL：
+
 ```
-‰/home
-‰/about
-‰/page/about
+/home
+/about
+/page/about
 /page/test
 ```
 
+2. 尝试运行`/home` URL，你将会得到如下截图：
 
 ![](../images/201.png)
 
+3. 尝试运行`/about`页面：
 
 ![](../images/202.png)
 
 ### 工作原理...
 
+下面我们来回顾都做了些什么，以及是如何工作的。我们的第一条规则是：
+
 ```
 'home' => 'test/index',
 ```
 
+`test/index`是什么？在Yii应用中，每一个控制器和它的动作都有相应的内部路由。对于一个内部路由，它的格式是`moduleID/controllerID/actionID`。例如，`TestController`的`actionPage`方法对应的路由是`test/page`。所以，为了获取控制器ID，你应该用它的不带`Controller`后缀的名称，并将它的首字母小写。为了获取一个动作ID，你应该用它的不带`action`前缀的方法名，同样将其首字母小写。
+
+现在，什么是home？为了以更好的方式理解它，我们需要知道，至少是表面上，当我们使用不同的URL访问我们的应用时，都发生了些什么。
+
+当我们使用`/home`时，URL路由从上到下一个一个的检查我们的规则，尝试找到和输入URL匹配的规则。如果找到了，那么路由将会从一个分配给它的内部路由中获取到控制器和它的动作，并执行它。所以，`/home`是URL模式，它定义了URL将会被处理的规则。
 
 ### 更多...
+
+你也可以使用一个特殊的语法创建参数化的规则。回顾一下第三条规则：
 
 ```
 'page/<alias>' => test/page',
 ```
 
+这里我们定义了一个alias参数，它应该在URL中`/page/`后边被指定。它可以是任何东西，并会被传递给`$alias`参数：
+
 ```
 TestController::actionPage($alias)
 ```
+
+你可以为这样一个参数定义一个模式。我们为第二条规则做同样的事情：
 
 ```
 '<alias:about>' => test/page'
 ```
 
+这里的alias应该匹配`about`，否则这条规则不能被应用。
+
 ### 参考
+
+欲了解更多信息，参考如下地址：
+
+- [http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html](http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html)
+- [http://www.yiiframework.com/doc-2.0/guide-runtime-url-handling.html](http://www.yiiframework.com/doc-2.0/guide-runtime-url-handling.html)
+- [http://www.yiiframework.com/doc-2.0/yii-web-urlmanager.html](http://www.yiiframework.com/doc-2.0/yii-web-urlmanager.html)
+- *在URL规则中使用正则表达式*小节
 
 ## 生成URLs
 
+Yii不仅允许你将URL路由到不同的控制器动作上，而且可以通过执行一个正确的内部路由和它的参数来生成一个URL。这非常有用，因为在开发应用过程中，你可以将精力集中在内部路由上，只需要在上线前关注一下真实的URL。永远不要直接指定URL，并确保你使用了Yii URL工具集。它会允许你修改URL，而且不需要修改很多应用代码。
+
 ### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 找到`@app/config/web.php`文件，并替换规则数组：
 
 ```
 'urlManager' => array(
@@ -103,6 +165,8 @@ TestController::actionPage($alias)
     'showScriptName' => false,
 ),
 ```
+
+3. 配置你的应用服务器来使用干净的URL。如果你在使用带有`mod_rewrite`的Apache，并打开了`AllowOverride`，那么你就可以添加如下内容到`@app/web`文件夹下的`.htaccess`文件中：
 
 ```
 Options +FollowSymLinks
@@ -115,8 +179,9 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.php
 ```
 
-
 ### 如何做...
+
+1. 在`@app/controllers`目录中，使用如下代码创建`BlogController`：
 
 ```
 <?php
@@ -147,6 +212,9 @@ class BlogController extends Controller
 }
 ```
 
+这是我们的博客控制器，我们将会给它生成自定义URL。
+
+2. 在`@app/controllers`文件夹中，使用如下代码创建`TestController`：
 
 ```
 <?php
@@ -162,6 +230,7 @@ class TestController extends Controller
 }
 ```
 
+3. 在`@app/views`文件夹中，创建`test`文件夹，以及`urls.php`视图文件，文件内容如下：
 
 ```
 <?php
@@ -201,31 +270,63 @@ use yii\helpers\Html;
 <?=Yii::$app->urlManager->createAbsoluteUrl(['blog/rss-feed', 'param' => 'someParam'])?>
 ```
 
+4. 打开`http://yii-book.app/test/urls`你将会看到如下输出（参考先前代码中全部方法的列表）：
 
 ![](../images/203.png)
 
 ### 工作原理...
 
+我们需要生成URL，指向`BlogController`的控制器动作（RssFeed, Article, List, HiTech）。
+
 ```
 <?= Html::a('Link Name', ['blog/article', 'alias' => 'someAlias']); ?>
 ```
 
+依赖于我们需要的地方，有不同的方式可以做到这些，但是基础是一样的。下面列出一些生成URL的方法。
+
+什么是内部路由？每一个控制器和它的动作有相应的路由。路由的格式是`moduleID/controllerID/actionID`。例如，`BlogController`的`actionHiTech`方法对应于`blog/hi-tech`路由。
+
+为了获取控制器ID，你应该用它的不带`Controller`后缀的名称，并将它的首字母小写。为了获取一个动作ID，你应该用它的不带`action`前缀的方法名，同样将每个单词的首字母小写，并使用`-`符号分割（例如`actionHiTech`将会是`hi-tech`）。
+
+`$_GET`变量做为参数会被传递给用内部路由指定的动作中。例如，如果我们想为`BlogController::actionArticle`创建一个URL，并将`$_GET['name']`传递给它，可以按如下方式进行：
+
+```
+<?= Html::a('Link Name', ['blog/article', 'alias' => 'someAlias']); ?>
+```
+
+在你的应用内部，可以使用相对URL，绝对URL应该被用于指向你的网站（例如其它网站）外部，或者用于链接到能被外部访问的资源上（RSS feeds，email等等）。
+
+你可以很容易的使用URL管理器。URL管理器是一个内置应用组件，名叫`urlManager`。你必须使用这个组件，它可以通过`Yii::$app->urlManager`从web和console被访问到。
+
+当你不能获得一个控制器实例时，例如，当你实施一个控制台应用，你可以使用如下两个`urlManager`创建方法：
 
 ```
 <?=Yii::$app->urlManager->createUrl(['blog/rss-feed', 'param' => 'someParam'])?>
 <?=Yii::$app->urlManager->createAbsoluteUrl(['blog/rss-feed','param' => 'someParam'])?>
 ```
 
-
 ### 更多...
 
+欲了解更多信息，参考如下URL：
+
+- [https://en.wikipedia.org/wiki/Canonical_link_element](https://en.wikipedia.org/wiki/Canonical_link_element)
+- [http://www.yiiframework.com/doc-2.0/guide-structure-controllers.html](http://www.yiiframework.com/doc-2.0/guide-structure-controllers.html)
+- [http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html](http://www.yiiframework.com/doc-2.0/guide-runtime-routing.html)
+- [http://www.yiiframework.com/doc-2.0/guide-helper-url.html](http://www.yiiframework.com/doc-2.0/guide-helper-url.html)
+- [http://www.yiiframework.com/doc-2.0/yii-web-urlmanager.html](http://www.yiiframework.com/doc-2.0/yii-web-urlmanager.html)
 
 ### 参考
 
+- *配置URL规则*小节
+
 ## 在URL规则中使用正则表达式
+
+Yii URL路由器的一个隐藏特性是，你可以使用正则表达式来处理地址。
 
 ### 准备
 
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 在你的`@app/controllers`文件夹中，使用如下代码创建`PostController.php`：
 
 ```
 <?php
@@ -250,6 +351,10 @@ class PostController extends Controller
 }
 ```
 
+这是我们的应用控制器，我们将会使用自定义URL来方法它。
+
+3. 配置你的应用服务器，来使用干净的URL。如果你在使用带有`mod_rewrite`的Apache，并打开了`AllowOverride`，那么你就可以添加如下内容到`@web`文件夹下的`.htaccess`文件中：
+
 ```
 Options +FollowSymLinks
 IndexIgnore */*
@@ -261,9 +366,11 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.php
 ```
 
-
 ### 如何做...
 
+我们希望我们的`PostController`动作根据一些指定的规则接受参数，并将其它所有不匹配的参数给以`404 not found`的HTTP响应。此外，`post/index`应该有一个alias URL archive。
+
+添加如下`urlManager`组件配置到`@app/config/web.php`：
 
 ```
 'components' => [
@@ -281,43 +388,80 @@ RewriteRule . index.php
 ],
 ```
 
+如下URL将会成功：
+
+- `http://yii-book.app/post/test`
+- `http://yii-book.app/posts`
+- `http://yii-book.app/archive`
+- `http://yii-book.app/posts/ASC`
+- `http://yii-book.app/sayhello`
+
+如下URL将会失败：
+
+- `http://yii-book.app/archive/test`
+- `http://yii-book.app/post/another_post`
+
+下面的截图展示了`http://yii-book.app/post/test`运行是成功的：
+
 ![](../images/204.png)
 
+下面的截图展示了`http://yii-book.app/archive`也可以运行成功：
 
 ![](../images/205.png)
 
+下面的截图展示`http://yii-book.app/archive/test`没有运行成功，并有一个报错：
 
 ![](../images/206.png)
 
 ### 工作原理...
 
+你可以在参数定义和规则的其它部分使用正则表达式。下面我们一条一条的看这些规则：
 
 ```
 'post/<alias:[-a-z]+>' => 'post/view',
 ```
+
+alias参数应该包含一个或多个英文单词或者一个`-`。其它符号不被允许。
 
 ```
 '(posts|archive)' => 'post/index',
 '(posts|archive)/<order:(DESC|ASC)>' => 'post/index',
 ```
 
+`posts`和`archive`都会指向`post/index`。`order`参数只接受两个值——`DESC`和`ASC`：
 
 ```
 'sayhello/<name>' => 'post/hello',
 ```
 
+你应该指定名称部分，但是没有对可以使用的单词做限制。注意到不管使用的规则是什么，开发者不应该假设输入的数据是安全的。
+
 ![](../images/207.png)
 
 ### 更多...
 
+欲了解更多关于正则表达式的信息，你可以使用如下资源：
+
+- [http://www.php.net/manual/en/reference.pcre.pattern.syntax.php](http://www.php.net/manual/en/reference.pcre.pattern.syntax.php)
+- [http://regex.info/](http://regex.info/)提供的*掌握正则表达式，Jeffrey Friedl*
 
 ### 参考
 
+- *配置URL规则*小节
+
 ## 使用一个基础控制器
+
+在许多框架中，通常会在指导中提出基础控制器的概念，它可以被其它控制器扩展。在Yii中，它不在指导中，因为你可以用其它多种方式很灵活的达到。但是，使用一个基础控制器是可能的，并且是有用的。
+
+假设我们想添加添加一些控制器，它们只能被登录的用于访问。我们当然可以为每一个控制器单独设置一些限制，但是我们将会用一种更好的方式来做到它。
 
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+
 ### 如何做...
+
+1. 首先，我们需要一个基础控制器，它只能被登录的用于使用。创建`@app/components/BaseController.php`，内容如下：
 
 ```
 <?php
@@ -354,8 +498,13 @@ class BaseController extends Controller
 }
 ```
 
+这个控制器有一个动作map，此外还有一个错误动作。
+
+2. 现在，使用Gii创建`TestController`，但是将基础类设置为`app/components/BaseController`：
 
 ![](../images/208.png)
+
+你将会得到类似如下的输出：
 
 ```
 <?php
@@ -369,9 +518,15 @@ class TestController extends \app\components\BaseController
 }
 ```
 
+3. 现在，你的`TestController`只能被登录用户访问，尽管我们没有在`TestController`控制器中做明确的说明。你可以在登出的时候通过访问`http://yii-book.app/index.php?r=test/index`来检查它。
+
 ### 工作原理...
 
+这个把戏只是一个类继承。如果过滤器或者访问控制规则不在`TestController`，那么他们将会从`SecureController`中调用。
+
 ### 更多...
+
+如果你需要继承基础控制器的方法，记住它不能被覆盖。例如，我们需要添加一个页面动作到控制器的动作map中：
 
 ```
 <?php
@@ -411,14 +566,26 @@ class TestController extends BaseController
 }
 ```
 
+欲了解更多信息，参考[http://www.yiiframework.com/doc-2.0/yii-base-controller.html](http://www.yiiframework.com/doc-2.0/yii-base-controller.html)。
+
 ## 使用独立动作
 
+在Yii中，你可以定义控制器动作作为独立的类，然后连接它们到你的控制器上。这将会帮助你复用一些常用功能。
+
+例如，你可以为自动完成字段移动后端到一个动作中并保存，而不需要再次一遍一遍的写。
+
+另外一个例子是，我们可以创建所有的CRUD操作作为分开的独立动作。我们将会写、创建、查看和删除模型的动作，并查看模型的操作列表。
+
 ### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 创建`post`表。使用如下命令创建migration：
 
 ```
 ./yii migrate/create create_post_table
 ```
 
+3. 更新刚刚创建的migration的方法和导出的类列表：
 
 ```
 <?php
@@ -455,12 +622,17 @@ class m150719_152435_create_post_table extends Migration
 }
 ```
 
+4. 使用如下命名安装所有的migration：
 
 ```
 ./yii migrate up
 ```
 
+5. 使用Gii创建`Post`。
+
 ### 如何做...
+
+1. 创建独立动作`@app/actions/CreateAction.php`：
 
 ```
 <?php
@@ -484,6 +656,7 @@ class CreateAction extends Action
 }
 ```
 
+2. 创建独立动作`@app/actions/DeleteAction.php`：
 
 ```
 <?php
@@ -505,7 +678,7 @@ class DeleteAction extends Action
 }
 ```
 
-
+3. 创建独立动作`@app/actions/IndexAction.php`：
 
 ```
 <?php
@@ -536,6 +709,7 @@ class IndexAction extends Action
 }
 ```
 
+4. 创建独立动作`@app/actions/ViewAction.php`：
 
 ```
 <?php
@@ -558,6 +732,7 @@ class ViewAction extends Action
 }
 ```
 
+5. 创建视图文件`@app/views/crud/create.php`：
 
 ```
 <?php
@@ -577,6 +752,7 @@ use yii\widgets\ActiveForm;
 <?php ActiveForm::end(); ?>
 ```
 
+6. 创建视图文件`@app/views/crud/index.php`：
 
 ```
 <?php
@@ -606,6 +782,7 @@ use yii\helpers\Url;
 ]); ?>
 ```
 
+7. 创建视图文件`@app/views/crud/view.php`：
 
 ```
 <?php
@@ -622,11 +799,15 @@ use yii\helpers\Url;
 <p><?= Html::encode($model->content);?></p>
 ```
 
+为了使用独立动作，我们在动作map中通过复写动作方法定义它。
+
+8. 运行`post/index`：
 
 ![](../images/209.png)
 
 ### 工作原理...
 
+每一个控制器可以从独立中创建，
 
 ### 参考
 
