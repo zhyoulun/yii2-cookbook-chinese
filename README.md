@@ -2,8 +2,8 @@
 
 | 序号 | 章 | 节 |
 |--|--|--|
-| 01 | [第一章 基础](chapters/chapter-01/chapter-01.md) | [介绍](chapters/chapter-01/chapter-01.md#介绍) <br /> [安装框架](chapters/chapter-01/chapter-01.md#安装框架) <br /> [应用模板](chapters/chapter-01/chapter-01.md#应用模板) <br /> [依赖注入容器](chapters/chapter-01/chapter-01.md#依赖注入容器) <br /> [服务定位器](chapters/chapter-01/chapter-01.md#服务定位器) |
-| 02 | [第二章 路由，控制器和视图](chapters/chapter-02/chapter-02.md) | |
+| 01 | [第一章 基础](chapters/chapter-01/chapter-01.md) | [介绍](chapters/chapter-01/chapter-01.md#介绍) <br /> [安装框架](chapters/chapter-01/chapter-01.md#安装框架) <br /> [应用模板](chapters/chapter-01/chapter-01.md#应用模板) <br /> [依赖注入容器](chapters/chapter-01/chapter-01.md#依赖注入容器) <br /> [服务定位器](chapters/chapter-01/chapter-01.md#服务定位器) <br /> [代码生成器](chapters/chapter-01/chapter-01.md#代码生成器) <br /> [配置控件](chapters/chapter-01/chapter-01.md#配置控件) <br /> [使用事件](chapters/chapter-01/chapter-01.md#使用事件) <br /> [使用外部代码](chapters/chapter-01/chapter-01.md#使用外部代码) |
+| 02 | [第二章 路由，控制器和视图](chapters/chapter-02/chapter-02.md) |  |
 | 03 | [第三章 ActiveRecord, Model, 数据库](chapters/chapter-03/chapter-03.md) | |
 | 04 | [第四章 表单](chapters/chapter-04/chapter-04.md) | |
 | 05 | [第五章 安全](chapters/chapter-05/chapter-05.md) | |
