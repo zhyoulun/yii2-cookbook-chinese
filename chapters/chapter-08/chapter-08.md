@@ -1281,7 +1281,11 @@ return [
 
 所有的控制台命令应该继承`yii\console\Controller`类。因为所有的控制器命令在`yii\console\Application`运行，而不是`yii\web\Application`，我们没有办法来决定`@webroot`的值。此外，在`yii2-app-advanced`模板中，默认情况下，我们有前端、后端和控制子目录。对于这个目的，我们创建可配置的公共数据，叫做`assetPaths`和`runtimePaths`。
 
-控制台命令结构本身类似一个典型的控制器。我们定义几个动作，
+控制台命令结构本身类似一个典型的控制器。我们定义几个动作，然后可以通过`yii <console command>/<command action>`来执行。
+
+正如你所看到的，没有使用视图，所以我们可以把精力集中在编程任务上，而不需要设计、标记等等。此外，你需要提供一些有用的输出，这样用户就知道现在是什么情况。这可以通过简单的PHP echo语句来完成。
+
+如果你的命令相对复杂，例如使用Yii构建的消息或者migrate，提供额外的描述是一个好的决定，说明可用的选项和动作。它可以通过复写`getHelp`方法完成：
 
 ```
 public function getHelp()
@@ -1290,6 +1294,40 @@ public function getHelp()
     return $out . parent::getHelp();
 }
 ```
+
+运行如下命令：
+
+```
+./yii help clean
+```
+
+你会看到如下全部输出：
+
+```
+DESCRIPTION
+Clean command allows you to clean up various temporary data Yii and
+an application are generating.
+Removes content of assets and runtime directories.
+SUB-COMMANDS
+- clean/assets Removes temporary assets.
+- clean/runtime Removes runtime content.
+```
+
+默认情况下，当我们运行shell命令时：
+
+```
+./yii
+```
+
+我们在输出列表中看到了所有命令的简化描述：
+
+```
+- clean Removes content of assets and runtime directories.
+    clean/assets Removes temporary assets.
+    clean/runtime Removes runtime content.
+```
+
+这个描述将会从类和动作前边的注释中获取：
 
 ```
 /**
@@ -1307,14 +1345,24 @@ class CleanController extends Controller
 }
 ```
 
+为你的类添加描述是可选的。你不用非得为你的CLI命令做这件事。
+
 ### 参考
 
+- 本章中的*创建可复用控制器*小节
+- 本章中*制作可发布扩展*小节
 
-## 创建CLI命令
+## 创建过滤器
+
+过滤器是一个类，它可以在动作之前或者之后执行。它可以被用于修改执行上下文，或者装饰输出。在我们的例子中，我们将会实现一个简单的访问过滤器，它允许用户只能在接受了**用户协议**之后才能看到私有的内容。
 
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
 ### 如何做...
+
+1. 创建协议表单模型：
 
 ```
 <?php
@@ -1340,6 +1388,7 @@ class AgreementForm extends Model
 }
 ```
 
+2. 创建协议检查服务：
 
 ```
 <?php
@@ -1363,6 +1412,9 @@ class AgreementChecker
 }
 ```
 
+它使用了协议cookies进行了封装。
+
+3. 创建`filter`类：
 
 ```
 <?php
@@ -1384,6 +1436,7 @@ class AgreementFilter extends ActionFilter
 }
 ```
 
+4. 创建内容控制器，并将过滤器附加到行为上：
 
 ```
 <?php
@@ -1425,6 +1478,7 @@ class ContentController extends Controller
 }
 ```
 
+5. 添加私有内容到`views/content/index.php`：
 
 ```
 <?php
@@ -1441,6 +1495,7 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 ```
 
+6. 给表单添加`views/content/agreement.php`视图：
 
 ```
 <?php
@@ -1465,6 +1520,7 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 ```
 
+7. 添加主菜单项到`views/layouts/main.php`：
 
 ```
 echo Nav::widget([
@@ -1478,7 +1534,21 @@ echo Nav::widget([
 ]);
 ```
 
+8. 尝试打开内容页。过滤器会将你重定向到协议页上：
+
+![](../images/805.png)
+
+9. 只有在接受协议之后，你才可以看到私有内容：
+
+![](../images/806.png)
+
+10. 此外，你可以附加这个过滤器到其他控制器或者模块上。
+
 ### 工作原理...
+
+过滤器应该继承了`yii\base\ActionFilter`类，它继承了`yii\base\Behavior`。如果我们想做前过滤或者后过滤，我们可以复写`beforeAction`或者`afterAction`方法。
+
+例如，我们可以检查用户访问，并在遇到失败情况时，抛出HTTP异常。在这个小节中，如果指定的cookie的值不存在，我们将用户重定向到协议页上。
 
 ```
 class AgreementFilter extends ActionFilter
@@ -1495,6 +1565,7 @@ class AgreementFilter extends ActionFilter
 }
 ```
 
+你可以附加过滤器到任何控制器或者模块上。为了指定必要路由的列表，只需要使用`only`或者`except`选项。例如，我们只为控制器的index动作应用我们的过滤器：
 
 ```
 public function behaviors()
@@ -1508,28 +1579,31 @@ public function behaviors()
 }
 ```
 
-### 参考
-
-
-## 创建过滤器
-
-### 准备
-
-### 如何做...
-
-### 工作原理...
-
-#### 注意
+**注意**：不要忘记，对于`beforeAction`方法，成功的时候返回一个`true`。否则，这个控制器动作将不会被执行。
 
 ### 参考
+
+欲了解更多关于过滤器的信息，参考[http://www.yiiframework.com/doc-2.0/guide-structurefilters.html](http://www.yiiframework.com/doc-2.0/guide-structurefilters.html)。
+
+对于内置的缓存和访问控制过滤器，参考：
+
+- [http://www.yiiframework.com/doc-2.0/guide-caching-http.html](http://www.yiiframework.com/doc-2.0/guide-caching-http.html)
+- [http://www.yiiframework.com/doc-2.0/guide-securityauthorization.html](http://www.yiiframework.com/doc-2.0/guide-securityauthorization.html)
+- *创建模型行为*小节
 
 ## 创建模块
 
-
+如果你创建了一个复杂的应用部分，并希望他有一些可自定义的自由度，并用于下一个项目中，很可能你需要创建一个模块。在这个小节中，我们将会看到如何创建一个应用日志查看模块。
 
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
 ### 如何做...
+
+首先我们来做一些计划。
+
+在`yii2-app-basic`中使用缺省配置，所有的日志被存放在`runtime/logs/app.log`文件中。
 
 ```
 <?php
@@ -1723,6 +1797,8 @@ echo Nav::widget([
 NavBar::end();
 ```
 
+![](../images/807.png)
+
 ### 工作原理...
 
 
@@ -1808,6 +1884,10 @@ class SmartyController extends Controller
 </div>
 ```
 
+![](../images/808.png)
+
+### 工作原理...
+
 ```
 <?php
 namespace yii\base;
@@ -1860,7 +1940,6 @@ public function render($view, $file, $params)
 }
 ```
 
-### 工作原理...
 
 ### 参考
 
@@ -2032,6 +2111,8 @@ $config = [
 ];
 ```
 
+![](../images/809.png)
+
 ```
 $config = [
     'id' => 'basic',
@@ -2041,6 +2122,8 @@ $config = [
     ...
 ];
 ```
+
+![](../images/810.png)
 
 ### 工作原理...
 
@@ -2082,7 +2165,7 @@ $config = [
 ];
 ```
 
-
+![](../images/811.png)
 
 ### 参考
 
