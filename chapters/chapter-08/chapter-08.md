@@ -1,12 +1,37 @@
 # 第八章 扩展Yii
 
+在本章中，我们将会讨论如下话题：
+
+- 创建帮助类
+- 创建模型行为
+- 创建组件
+- 创建可复用控制器动作
+- 创建可复用控制器
+- 创建一个小组件
+- 创建CLI命令
+- 创建过滤器
+- 创建模块
+- 创建一个自定义视图渲染器
+- 创建一个多语言应用
+- 制作可发布的扩展
+
 ## 介绍
+
+在本章中，我们将会想你展示如何实现自己的Yii扩展，以及如何使自己的扩展可复用，并对社区有用。此外，我们将会关注许多你需要做的事情，使你的扩展尽可能高效。
 
 ## 创建帮助类
 
+有许多内置的框架帮助类，例如`yii\helpers`命名空间下的`StringHelper`。这里包含了很多有用的静态方法，用于操纵字符串、文件、数组和其它目标。
+
+在需要情况下，对于额外的行为，你可以创建一个自己的帮助类，并将任何静态函数放在里边。例如，我们在本小节中事先了数字帮助类。
+
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
 ### 如何做...
+
+1. 在你的项目中创建`helpers`文件夹，以及`NumberHelper`类：
 
 ```
 <?php
@@ -20,6 +45,7 @@ class NumberHelper
 }
 ```
 
+2. 添加`actionNumbers`方法到`NumberHelper`：
 
 ```
 <?php
@@ -34,6 +60,7 @@ class SiteController extends Controller
 }
 ```
 
+3. 添加`views/site/numbers.php`视图：
 
 ```
 <?php
@@ -57,16 +84,46 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 ```
 
+4. 打开这个动作。你将会看到如下截图：
+
+![](../images/801.png)
+
+在其它例子中，你可以指定其它数量的十进制数。观察如下例子：
+
+```
+NumberHelper::format($value, 3)
+```
 
 ### 工作原理...
 
-#### 注意
+Yii2中任何帮助类只是函数的集合，在对应的类中以静态方法实现。
+
+你可以使用一个帮助类用于实现任何类型的输出，操纵任何变量的任何值，以及其它例子。
+
+**注意**：通常，静态帮助类是轻量干净的函数，有少数几个参数。避免将你的业务逻辑和其它复杂的操纵到帮助类中。在其它情况中，使用小组件或者其它组件，而不是帮助类。
 
 ### 参考
 
+欲了解更多信息，参考：
+
+[http://www.yiiframework.com/doc-2.0/guide-helper-overview.html](http://www.yiiframework.com/doc-2.0/guide-helper-overview.html)
+
+例如对于内置帮助类，参考框架中`helpers`文件夹下的源代码。对于框架，参考：
+
+[https://github.com/yiisoft/yii2/tree/master/framework/helpers](https://github.com/yiisoft/yii2/tree/master/framework/helpers)。
+
 ## 创建模型行为
 
+现在的web应用中，有许多相似的解决方案。龙头产品例如google的Gmail，有这两个的UI模式。其中一个就是软删除。不需要点击成吨的确认进行永久删除，Gmail允许我们将信息立刻标记为删除，然后可以很容易的撤销它。相同的行为可以应用于任何对象上，例如博客帖子、评论等等。
+
+下边我们来创建一个行为，它将允许我们将模型标记为删除，选择还未删除的模型，删除模型，以及所有的模型。在本小节中，我们将会进行一个测试驱动的开发方法，来计划这个行为，并测试实现是否正确。
+
 ### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+2. 创建两个数据库分别用于工作和测试。
+3. 在你的主应用`config/db.php`中配置Yii来使用第一个数据库。确认测试应用使用第二个数据库`tests/codeception/config/config.php`。
+4. 创建一个新的migration：
 
 ```
 <?php
@@ -89,11 +146,14 @@ class m160427_103115_create_post_table extends Migration
 }
 ```
 
+5. 应用migration到工作和测试数据库上：
 
 ```
 ./yii migrate
 tests/codeception/bin/yii migrate
 ```
+
+6. 创建`Post`模型：
 
 ```
 <?php
@@ -123,11 +183,9 @@ class Post extends ActiveRecord
 }
 ```
 
-
-
-
-
 ### 如何做...
+
+准备一个测试环境，为`Post`模型定义fixtures。创建文件`tests/codeception/unit/fixtures/PostFixture.php`：
 
 ```
 <?php
@@ -140,6 +198,7 @@ class PostFixture extends ActiveFixture
 }
 ```
 
+1. 添加一个fixture数据到`tests/codeception/unit/fixtures/data/post.php`：
 
 ```
 <?php
@@ -153,6 +212,7 @@ return [
 ];
 ```
 
+2. 然后，我们需要创建一个测试用例，`tests/codeception/unit/MarkdownBehaviorTest.php`：
 
 ```
 <?php
@@ -188,8 +248,7 @@ class MarkdownBehaviorTest extends DbTestCase
 }
 ```
 
-
-
+3. 运行单元测试：
 
 ```
 codecept run unit MarkdownBehaviorTest
@@ -209,6 +268,7 @@ MarkdownBehaviorTest::testExistingModelSave Error
 Time: 289 ms, Memory: 16.75MB
 ```
 
+4. 现在我们需要实现行为，将它附加到模型上，并确保测试通过。创建一个新的文件夹`behaviors`。在这个文件夹中，创建一个`MarkdownBehavior`类：
 
 ```
 <?php
@@ -254,7 +314,7 @@ class MarkdownBehavior extends Behavior
 }
 ```
 
-
+5. 附加行为到Post模型上：
 
 ```
 class Post extends ActiveRecord
@@ -273,6 +333,8 @@ class Post extends ActiveRecord
 }
 ```
 
+6. 运行测试并确保通过：
+
 ```
 Codeception PHP Testing Framework v2.0.9
 Powered by PHPUnit 4.8.27 by Sebastian Bergmann and
@@ -289,7 +351,18 @@ MarkdownBehaviorTest::testExistingModelSave Ok
 Time: 329 ms, Memory: 17.00MB
 ```
 
+7. 完成了。我们已经创建了一个可复用的行为，并可以使用它用于所有未来的项目中，只需要将它连接到一个模型上。
+
 ### 工作原理...
+
+首先看下测试用例。因为我们希望使用模型集，我们定义了fixtures。每次测试方法被执行的时候，一个fixture集合被放到了数据库中。
+
+我们准备单元测试用以说明行为是如何工作的：
+
+- 首先，我们测试一个新的模型内容的处理。这个行为会将source属性中的markdown格式的文本，转换为HTML，并存储在target属性中。
+- 第二，我们对更新已有模型的内容进行测试。在修改了markdown内容以后，保存这个模型，我们可以得到更新后的HTML内容。
+
+现在，我们转到有趣的实现细节上。在行为中，我们可以添加我们自己的方法，它将会被混合到附带有行为的模型中。此外，我们可以订阅拥有者的组件事件。我们使用它添加一个自己的监听：
 
 ```
 public function events()
@@ -301,8 +374,7 @@ public function events()
 }
 ```
 
-
-
+现在，我们可以实现这个监听器：
 
 ```
 public function onBeforeSave(Event $event)
@@ -314,6 +386,7 @@ public function onBeforeSave(Event $event)
 }
 ```
 
+在所有的方法中，我们可以使用`owner`属性来获取附带有行为的对象。一般情况下，我们可以附加任何行为到我们的模型、控制器、应用，以及其它继承了`yii\base\Component`类的组件。此外，我们可以重复附加一个行为到模型上，用以处理不同的属性：
 
 ```
 class Post extends ActiveRecord
@@ -337,13 +410,34 @@ class Post extends ActiveRecord
 }
 ```
 
+此外，我们可以像`yii\behaviors\TimestampBehavior`继承`yii\base\AttributeBehavior`，用以为任何事件更新指定的属性。
+
 ### 参考
+
+为了了解更多关于行为和事件，参考如下页面：
+
+- [http://www.yiiframework.com/doc-2.0/guide-concept-behaviors.html](http://www.yiiframework.com/doc-2.0/guide-concept-behaviors.html)
+- [http://www.yiiframework.com/doc-2.0/guide-concept-events.html](http://www.yiiframework.com/doc-2.0/guide-concept-events.html)
+
+欲了解更多关于markdown语法的信息，参考[http://daringfireball.net/projects/markdown/](http://daringfireball.net/projects/markdown/)。
+
+此外，参考本章中的*制作可发布的扩展*小节。
 
 ## 创建组件
 
+如果你有一些代码，看上去可以被复用，但是你不知道它是一个行为、小组件还是其它东西，很有可能它是一个组件。一个组件应该是继承了`yii\base\Component`类。然后，这个组件可以被附加到应用上，并使用配置文件中的`components`部分进行配置。这就是同只是使用纯PHP类相比最主要的优点。此外，我们可以得到行为、事件、getter、setter的支持。
+
+在我们的例子中，我们将会实现一个简单的交换应用组件，它能从`http://fixer.io`获取最新的汇率，将它附加在应用上，并使用它。
+
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
 ### 如何做...
+
+为了得到汇率，我们的组件应该发送一个HTTP GET请求到一个服务地址上，例如`http://api.fixer.io/2016-05-14?base=USD`。
+
+这个服务会返回所有支持的汇率在最近一天的情况：
 
 ```
 {
@@ -359,6 +453,10 @@ class Post extends ActiveRecord
 }
 ```
 
+这个组件应该从JSON格式的响应解析出汇率，并返回一个目标汇率：
+
+1. 在你的应用结构中创建`components`文件夹。
+2. 使用如下interface创建组件类例子：
 
 ```
 <?php
@@ -372,7 +470,7 @@ class Exchange extends Component
 }
 ```
 
-
+3. 实现这个组件的功能：
 
 ```
 <?php
@@ -459,6 +557,7 @@ class Exchange extends Component
 }
 ```
 
+4. 附加这个组件到你的`config/console.php`或者`config/web.php`配置文件中：
 
 ```
 'components' => [
@@ -474,11 +573,14 @@ class Exchange extends Component
 ],
 ```
 
+5. 现在，我们可以直接使用一个新的组件，或者使用`get`方法：
+
 ```
 echo \Yii::$app->exchange->getRate('USD', 'EUR');
 echo \Yii::$app->get('exchange')->getRate('USD', 'EUR', '2014-04-12');
 ```
 
+6. 创建一个实例控制台控制器：
 
 ```
 <?php
@@ -494,6 +596,7 @@ class ExchangeController extends Controller
 }
 ```
 
+7. 现在尝试运行任何命令：
 
 ```
 $ ./yii exchange/test EUR
@@ -512,7 +615,15 @@ $ ./yii exchange/test ASD
 > Exception 'RuntimeException' with message 'Rate not found.'
 ```
 
+作为结果，成功的话，你可以看到汇率值；如果失败你会看到指定的异常错误。此外创建你自己的组件，你可以做的更多。
+
 #### 覆盖已经存在的应用组件
+
+大部分情况下，没有必须创建你自己的应用组件，因为其它类型的扩展，例如小组件或者行为，涵盖了几乎所有类型的可复用代码。但是，复写核心框架组件是一个常用的实践，并且可以被用于自定义框架的行为，用于特殊的需求，而不需要修改核心代码。
+
+例如，为了能够使用`Yii::app()->formatter->asNumber($value)`格式化数字，而不是在*创建帮助类*小节中的`NumberHelper::format`方法，你可以使用如下步骤：
+
+1. 继承`yii\i18n\Formatter`组件：
 
 ```
 <?php
@@ -526,6 +637,8 @@ class Formatter extends \yii\i18n\Formatter
 }
 ```
 
+2. 复写内置`formatter`组件的类：
+
 ```
 'components' => [
     // ...
@@ -536,11 +649,13 @@ class Formatter extends \yii\i18n\Formatter
 ],
 ```
 
+3. 现在，我们可以直接使用这个方法：
 
 ```
 echo Yii::app()->formatter->asNumber(1534635.2, 3);
 ```
 
+或者，它可以被用做一个新的格式，用在`GridView`和`DetailView`小组件中：
 
 ```
 <?= \yii\grid\GridView::widget([
@@ -554,14 +669,31 @@ echo Yii::app()->formatter->asNumber(1534635.2, 3);
 ]) ?>
 ```
 
+4. 此外，你可以扩展任何已有的组件，而不需要修改源代码。
+
 ### 工作原理...
+
+为了能附加一个组件到一个应用中，它可以从`yii\base\Component`进行继承。附加非常简单，只需要添加一个新的数组到配置的组件部分。这里class的值指定了组件的类，其它值用于设置这个组件的公共属性和setter方法。
+
+继承它自己非常直接：我们包裹了[http://api.fixer.io](http://api.fixer.io)调用到一个非常舒适的API中，并可以进行校验和缓存。我们可以通过`Yii::$app`和组件的名称访问我们的类。在我们的例子中，它会是`Yii::$app->exchange`。
 
 ### 参考
 
+欲了解关于组件的官方信息，参考[http://www.yiiframework.com/doc-2.0/guideconcept-components.html](http://www.yiiframework.com/doc-2.0/guideconcept-components.html)。
+
+对于`NumberHelper`类的源代码，参考*创建帮助类*小节。
+
 ## 创建可重用控制器动作
 
+常用的动作，例如通过主键删除AR模型，或者从AJAX autocomplete获取数据，可以移到可复用控制器动作中，然后附加到需要的控制器上。
+
+在这个小节中，我们将会创建一个可复用删除动作，它会通过主键删除指定的AR模型。
 
 ### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+2. 创建一个新的数据库并配置它。
+3. 创建并应用如下migration：
 
 ```
 <?php
@@ -583,8 +715,19 @@ class m160308_093233_create_post_table extends Migration
 }
 ```
 
+4. 使用Gii为帖子和评论生成模型。
+5. 在Gii中生成标准的CRUD控制器`app\controllers\PostController`。
+6. 确保CRUD正常工作：
+
+![](../images/802.png)
+
+7. 在一个成功的例子中，添加一些帖子示例。
+
 ### 如何做...
 
+执行如下步骤：
+
+1. 创建动作文件夹，添加`DeleteAction`独立动作：
 
 ```
 <?php
@@ -630,6 +773,8 @@ class DeleteAction extends Action
 }
 ```
 
+2. 现在我们需要将它附加到`controllers/PostController.php`控制器中。移除控制器的`actionDelete`和`behaviors`方法，并在`actions`方法中附加你自己的动作：
+
 ```
 <?php
 namespace app\controllers;
@@ -665,16 +810,38 @@ class PostController extends Controller
 }
 ```
 
+3. 完成了。确保删除操作可以正常工作，并且在删除之后，你将会被重定向到一个对应的index动作中。
 
 ### 工作原理...
 
+为了创建一个额外的控制器动作，你需要从`yii\base\Action`中继承你的类。唯一需要强制实现的方法是`run`。在我们的例子中，它使用Yii的自动参数绑定特性，从`$_GET`接收名叫`$id`的参数，并尝试删除一个对应的模型。
+
+为了是它可配置，我们创建了两个可配置的公共属性。`modelName`保存了模型的名称，以及`redirectTo`指定了用户会被重定向的路由。
+
+这个配置本身是通过在你的控制器中实现动作方法来完成的。这里，你可以附加这个动作一次或者多次，并配置它的公共属性。
+
+如果你需要重定向到别的动作，或者渲染一个指定的视图，你可以通过控制器属性，访问原始的控制器对象。
+
 ### 参考
+
+- 欲了解更多关于控制器和动作的信息，参考[http://www.yiiframework.com/doc-2.0/guide-structure-controllers.html](http://www.yiiframework.com/doc-2.0/guide-structure-controllers.html)
+- 本章中的*创建可复用控制器*小节
 
 ## 创建可重用控制器
 
+在Yii中，你可以创建可复用的控制器。如果你创建许多应用或者控制器，他们有相同的类型，将所有常用的代码移动到一个可复用的控制器中将会节省很多时间。
+
+在本小节中，我们将会尝试创建一个常用的`CleanController`，它会清理临时文件夹以及flush缓存数据。
+
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
 ### 如何做...
+
+执行如下步骤，创建可复用的控制器：
+
+1. 创建`cleaner`目录，并添加独立`CleanController`控制器：
 
 ```
 <?php
@@ -750,6 +917,8 @@ class CleanController extends Controller
 }
 ```
 
+2. 为`actionIndex`方法创建`cleaner/views/index.php`视图文件：actionIndex
+
 ```
 <?php
 use yii\helpers\Html;
@@ -795,8 +964,7 @@ $this->params['breadcrumbs'][] = $this->title;
 
 ```
 
-
-
+3. 配置`config/web.php`的`controllerMap`部分，附加控制器到应用中：
 
 ```
 $config = [
@@ -813,6 +981,8 @@ $config = [
 ];
 ```
 
+4. 添加一个新的条目到主菜单中：
+
 ```
 echo Nav::widget([
     'options' => ['class' => 'navbar-nav navbar-right'],
@@ -824,6 +994,12 @@ echo Nav::widget([
     ],
 ]);
 ```
+
+5. 打开控制器，并清理assets：
+
+![](../images/803.png)
+
+6. 如果你用的是yii2高级应用模板，只需要在配置中指定正确的路径：
 
 ```
 'controllerMap' => [
@@ -840,15 +1016,32 @@ echo Nav::widget([
 ],
 ```
 
+现在我们可以附加这个控制器到任何应用中。
+
 ### 工作原理...
+
+当你运行一个应用时，假如路由是`clean/index`，指向`CleanController::actionIndex`，Yii检查`controllerMap`是否定义了。因为这里我们有一个干净的控制器，Yii会执行它，而不是像常用的方式。
+
+在这个控制器中，我们定义了`assetPaths`，`runtimePaths`和`caches`属性，这能够连接这个控制器到应用的不同路径和缓存结构。当附加这个控制器的时候设置它。
 
 ### 参考
 
-## 创建一个小部件
+- 为了更多关于控制器和控制器map的信息，参考[http://www.yiiframework.com/doc-2.0/guide-structure-controllers.html](http://www.yiiframework.com/doc-2.0/guide-structure-controllers.html)
+- 本章中的*创建可复用控制器*小节
+
+## 创建小部件
+
+小部件是视图中可复用的部分，它不仅会渲染一些数据，而且还能依赖于一些逻辑。它甚至可以从模型中获取数据，并使用它自己的视图，所以它就像一个简化的可复用的模块。
+
+下面我们来创建一个小部件，它会使用Google API画一个饼状图。
 
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
 ###如何做...
+
+1. 创建`widgets`目录，并添加`ChartWidget`类：
 
 ```
 <?php
@@ -882,7 +1075,7 @@ class ChartWidget extends Widget
 }
 ```
 
-
+2. 创建`widgets/views/chart.php`视图：
 
 ```
 <?php
@@ -895,7 +1088,7 @@ use yii\helpers\Html;
 </div>
 ```
 
-
+3. 创建一个`ChartController`控制器：
 
 ```
 <?php
@@ -910,6 +1103,7 @@ class ChartController extends Controller
 }
 ```
 
+4. 添加`views/chart/index.php`视图：
 
 ```
 <?php
@@ -934,6 +1128,39 @@ $this->params['breadcrumbs'][] = $this->title;
     ]) ?>
 </div>
 ```
+
+5. 现在尝试运行这个动作。你应该能看到一个饼状图，如下所示：
+
+![](../images/804.png)
+
+6. 你可以展示不同尺寸和数据集的图。
+
+### 工作原理...
+
+和其它类型的扩展一样，我们创建一些可以配置的公共属性，在调用一个小部件时使用它的`widget`方法。在这个例子中，我们配置了标题、数据集和数据标签。
+
+小部件的主方法是`run()`。在我们的小部件中，我们生成一个URL，并渲染小部件视图，它使用Google charting API来打印`<img>`标签。
+
+### 参考
+
+- 欲了解更多关于小部件的信息，参考[http://www.yiiframework.com/doc-2.0/guide-structurewidgets.html](http://www.yiiframework.com/doc-2.0/guide-structurewidgets.html)
+- 本章中的*制作可发布的扩展*小节
+
+## 创建CLI命令
+
+Yii有一个好的命令行支持，允许创建可复用的控制台命令。控制台命令比创建web GUI更快。如果你需要为你的应用创建一些工具，可以被开发者或者管理使用，那么控制台命令就是很好的工具。
+
+为了展示如何创建一个控制台命令，我们将会创建一个简单的命令，它会清理一些东西，例如assets和临时文件夹。
+
+### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+### 如何做...
+
+执行如下过程来创建CLI命令：
+
+1. 使用如下代码创建`commands/CleanController.php`：
 
 ```
 <?php
@@ -982,7 +1209,49 @@ class CleanController extends Controller
 }
 ```
 
+2. 现在我们可以使用我们自己的控制台命令。只需要运行`yii` shell脚本。
 
+```
+./yii
+```
+
+3. 查找自己的`clean`命令：
+
+```
+This is Yii version 2.0.7.
+The following commands are available:
+- asset Allows you to combine...
+asset/compress Combines and compresses the asset...
+asset/template Creates template of configuration
+file...
+...
+- clean Removes content of assets and
+runtime directories.
+clean/assets Removes temporary assets.
+clean/runtime Removes runtime content.
+- fixture Manages fixture data loading and
+unloading.
+fixture/load (default) Loads the specified fixture data.
+fixture/unload Unloads the specified fixtures.
+...
+```
+
+4. 运行asset清理：
+
+```
+.yii clean/assets
+```
+
+5. 查看处理报告：
+
+```
+Removed /yii-book.app/web/assets/25f82b8a
+Removed /yii-book.app/web/assets/9b3b2888
+Removed /yii-book.app/web/assets/f4307424
+Done
+```
+
+6. 如果你想在`yii2-app-advanced`应用中使用这个控制器，只需要指定自定义工作路径：
 
 ```
 return [
@@ -1009,6 +1278,10 @@ return [
 ```
 
 ### 工作原理...
+
+所有的控制台命令应该继承`yii\console\Controller`类。因为所有的控制器命令在`yii\console\Application`运行，而不是`yii\web\Application`，我们没有办法来决定`@webroot`的值。此外，在`yii2-app-advanced`模板中，默认情况下，我们有前端、后端和控制子目录。对于这个目的，我们创建可配置的公共数据，叫做`assetPaths`和`runtimePaths`。
+
+控制台命令结构本身类似一个典型的控制器。我们定义几个动作，
 
 ```
 public function getHelp()

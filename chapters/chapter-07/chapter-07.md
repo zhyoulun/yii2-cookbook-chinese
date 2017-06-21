@@ -820,7 +820,7 @@ var_dump($row['_id']); // outputs:
 
 这个扩展的`Query`、`ActiveQuery`以及`ActiveRecord`继承了`yii\db\QueryInterface`和`yii\db\BaseActiveRecord`。因此他们和框架内置的`Query`、`ActiveQuery`以及`ActiveRecord`是兼容的。
 
-你可以使用
+你可以为你的模型使用`yii\mongodb\ActiveRecord`，`yii\mongodb\ActiveQuery`构建器来获取你的模型，并在你的data provider使用他们：
 
 ```
 use yii\data\ActiveDataProvider;
@@ -833,13 +833,34 @@ $provider = new ActiveDataProvider([
 ]);
 ```
 
+关于如何使用Yii ActiveRecord的一般信息，请参考第三章，*ActiveRecord，模型和数据库*。
+
 ### 参考
+
+- 欲了解更多关于该扩展的信息，请参考如下地址：
+    + [https://github.com/yiisoft/yii2-mongodb/blob/master/docs/guide/README.md](https://github.com/yiisoft/yii2-mongodb/blob/master/docs/guide/README.md)
+    + [http://www.yiiframework.com/doc-2.0/ext-mongodb-index.html](http://www.yiiframework.com/doc-2.0/ext-mongodb-index.html)
+- 关于原始库的信息，参考
+    + [https://docs.mongodb.org/manual/](https://docs.mongodb.org/manual/)
+- 关于ActiveRecord的信息参考第三章，*ActiveRecord，模型和数据库*
 
 ## ElasticSearch引擎适配器
 
+这个扩展是一个类ActiveRecord的包装，将ElasticSearch全文搜索引擎集成到Yii2框架中。它允许你使用任何模型数据，并使用ActiveRecord模式在ElasticSearch数据集中获取和存储数据。
+
 ### 准备
 
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 从[https://www.elastic.co/downloads/elasticsearch](https://www.elastic.co/downloads/elasticsearch)安装`ElasticSearch`服务。
+3. 使用如下命令安装扩展：
+
+```
+composer require yiisoft/yii2-elasticsearch
+```
+
 ### 如何做...
+
+在你的应用配置中设置新的`ElasticSearch`连接。
 
 ```
 return [
@@ -856,9 +877,9 @@ return [
 ];
 ```
 
-
-
 #### 使用查询类
+
+你可以使用`Query`类，用于在任何数据集中进行低级查询：
 
 ```
 use \yii\elasticsearch\Query;
@@ -869,12 +890,18 @@ $query->fields('id, name')
 $query->search();
 ```
 
+你也可以创建一个命令，直接运行：
+
 ```
 $command = $query->createCommand();
 $rows = $command->search();
 ```
 
 #### 使用ActiveRecord
+
+使用`ActiveRecord`是一种常用的方法来访问你的数据。只需要扩展`yii\elasticsearch\ActiveRecord`类，并继承`attributes()`方法，来定义你文档的属性。
+
+例如，你可以写`Customer`模型：
 
 ```
 class Buyer extends \yii\elasticsearch\ActiveRecord
@@ -890,6 +917,8 @@ class Buyer extends \yii\elasticsearch\ActiveRecord
 }
 ```
 
+然后写`Order`模型：
+
 ```
 class Order extends \yii\elasticsearch\ActiveRecord
 {
@@ -904,6 +933,10 @@ class Order extends \yii\elasticsearch\ActiveRecord
 }
 ```
 
+你可以复写`index()`和`type()`来定义这个记录的index和type。
+
+下边是一个使用例子：
+
 ```
 $buyer = new Buyer();
 $buyer>primaryKey = 1; // it equivalent to $customer->id = 1;
@@ -914,9 +947,10 @@ $buyer = Buyer::mget([1,2,3]);
 $buyer = Buyer::find()->where(['name' => 'test'])->one();
 ```
 
+你可以使用Query DSL做指定查询：
+
 ```
-$result = Article::find()->query(["match" => ["title" =>
-"yii"]])->all();
+$result = Article::find()->query(["match" => ["title" => "yii"]])->all();
 $query = Article::find()->query([
     "fuzzy_like_this" => [
         "fields" => ["title", "description"],
@@ -927,6 +961,8 @@ $query = Article::find()->query([
 $query->all();
 ```
 
+你可以添加facets到你的搜索中：
+
 ```
 $query->addStatisticalFacet('click_stats', ['field' => 'visit_count']);
 $query->search();
@@ -934,6 +970,7 @@ $query->search();
 
 #### 使用ElasticSearch调试板
 
+这个扩展包含了一个特殊的面板，用于`yii2-debug`模块。它允许你查看所有执行的查询。你可以在你的配置文件中包含这个面板：
 
 ```
 if (YII_ENV_DEV) {
@@ -954,13 +991,37 @@ if (YII_ENV_DEV) {
 
 ### 工作原理...
 
-#### 注意
+这个扩展提供了一个低级命令构建器，以及高级`ActiveRecord`实现，用于从`ElasticSearch`中查询记录。
+
+这个扩展的ActiveRecord的用法和数据库的`ActiveRecord`非常类似，后者可以参考第三章，*ActiveRecord，模型和数据库*，此外还有`join()`、`groupBy()`、`having()`、`union()`ActiveQuery操作。
+
+**注意**：`ElasticSearch`默认限制返回的记录数量，如果你使用`via()`选项来使用关系，注意这个限制。
 
 ### 参考
 
+- 欲了解更多关于这个扩展的信息，参考
+    + [https://github.com/yiisoft/yii2-elasticsearch/blob/master/docs/guide/README.md](https://github.com/yiisoft/yii2-elasticsearch/blob/master/docs/guide/README.md)
+    + [http://www.yiiframework.com/doc-2.0/ext-elasticsearch-index.html](http://www.yiiframework.com/doc-2.0/ext-elasticsearch-index.html)
+- 你也可以访问官方扩展网站[https://www.elastic.co/products/elasticsearch](https://www.elastic.co/products/elasticsearch)
+- 欲了解更多关于Query DSL的信息，你可以访问：
+    + [http://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-matchquery.html](http://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-matchquery.html)
+    + [http://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-flt-query.html](http://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-flt-query.html)
+- ActiveRecord的用法参考第三章，*ActiveRecord，模型和数据库*
+
 ## Gii代码生成器
 
+这个扩展为Yii2应用提供了一个基于web的代码生成器，名叫Gii。你可以使用Gii来快速生成模型、表单、模块、CRUD等等。
+
 ### 准备
+
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 使用shell命令创建一个新的migration：
+
+```
+php yii migrate/create create_customer_table
+```
+
+3. 将如下代码放在`up()`和`down()`两个方法中：
 
 ```
 use yii\db\Schema;
@@ -988,13 +1049,22 @@ class m160201_154207_create_customer_table extends Migration
 }
 ```
 
+4. 应用这个migration：
+
 ```
 php yii migrate/up
 ```
 
 ### 如何做...
 
+在你的项目中，你可以以两种方式使用这个扩展：
+
+- 使用GUI
+- 使用CLI
+
 #### 使用GUI
+
+1. 检查你的web配置是否包含如下代码：
 
 ```
 if (YII_ENV_DEV) {
@@ -1005,9 +1075,15 @@ if (YII_ENV_DEV) {
 }
 ```
 
+2. 你的`web/index.php`文件将会定义开发环境：
+
 ```
 defined('YII_ENV') or define('YII_ENV', 'dev');
 ```
+
+先前的配置表明，如果是在开发环境中，这个应用将会包含一个名叫`gii`的模块，它的类是`yii\gii\Module`。
+
+默认情况下，这个模块允许IP地址为`127.0.0.1`访问。如果你在其它地方访问，将你的IP地址添加到`allowedIPs`属性中：
 
 ```
 $config['modules']['gii'] = [
@@ -1016,7 +1092,47 @@ $config['modules']['gii'] = [
 ];
 ```
 
+3. 访问`http://localhost/index.php?r=gii`：
+
+![](../images/711.png)
+
+4. 点击`模型生成器`按钮，在表单中填写你的标明和模型名：
+
+![](../images/712.png)
+
+5. 点击**预览**按钮。你能看到文件列表：
+
+![](../images/713.png)
+
+6. 如果想重新生成已经存在的文件，Gii将会用黄色标记：
+
+![](../images/714.png)
+
+7. 在这种情况下，你可以查看存在的文件和新文件之间的区别，如果需要就覆盖目标。
+8. 做完这些以后，点击**生成**按钮：
+
+![](../images/715.png)
+
+9. 检查新的类，`\app\models\Customer`。
+10. CRUD是一个缩写，代表四种常用的任务：创建、读取、更新和删除。为了使用Gii创建CRUD，选择**CRUD生成器**部分。指定你的模型类，并输出其它字段：
+
+![](../images/716.png)
+
+11. 生成新的条目：
+
+![](../images/717.png)
+
+12. 然后，尝试打开新的控制器：
+
+![](../images/718.png)
+
+13. 你将会看到一个数据grid，展示了数据表中的消费者数据。尝试创建一个新的条目，你可以对这个表格进行排序或者在列头上输入过滤条件进行过滤。
+
 #### 使用CLI
+
+Gii为代码生成提供了一个控制台控制器：
+
+1. 检查你的控制台配置是否包含Gii模块设置：
 
 ```
 return [
@@ -1028,14 +1144,21 @@ return [
 ];
 ```
 
+2. 运行任何shell命令获取帮助：
+
 ```
 php yii help gii
 php yii help gii/model
 ```
 
+3. 输出如下命令启动一个模型生成过程：
+
 ```
 php yii gii/model --tableName=customer --modelClass=Customer --useTablePrefix=1
 ```
+
+4. 检查新的类`\app\models\Customer`：
+5. 为你的模型生成CRUD：
 
 ```
 php yii gii/crud --modelClass=app\\models\\Customer \
@@ -1045,13 +1168,27 @@ php yii gii/crud --modelClass=app\\models\\Customer \
 
 ### 工作原理...
 
+Gii允许你生成一些标准代码元素，而不是手动输入。它提供了基于web的和控制台接口来使用每一个生成器。
+
 ### 参考
+
+- 欲了解关于这个扩展的更多信息，参考：
+    + [http://www.yiiframework.com/doc-2.0/guide-start-gii.html](http://www.yiiframework.com/doc-2.0/guide-start-gii.html)
+    + [http://www.yiiframework.com/doc-2.0/ext-gii-index.html](http://www.yiiframework.com/doc-2.0/ext-gii-index.html)
+    + [https://github.com/yiisoft/yii2-gii/tree/master/docs/guide](https://github.com/yiisoft/yii2-gii/tree/master/docs/guide)
+- 对于MongoDB集成，参考第八章*扩展Yii*中的*创建一个小组件*小节
 
 ## Pjax JQuery插件
 
+Pjax是一个小组件，它集成了`pjax jQuery`插件。所有被这个小组件包括的内容，可以通过AJAX加载，而不需要刷新当前页面，这个小组件在你浏览器的地址栏中也使用HTML5 History API来修改当前URL。
+
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+
 ### 如何做...
+
+在下面的例子中，你可以看到如何通过`yii\grid\GridView`小组件来使用Pjax：
 
 ```
 <?php
@@ -1062,6 +1199,10 @@ use yii\widgets\Pjax;
 <?php Pjax::end(); ?>
 ```
 
+只需要在`Pjax::begin()`和`Pjax::end()`包裹任何代码片段。
+
+这将会渲染出如下HTML代码：
+
 ```
 <div id="w1">
     <div id="w2" class="grid-view">...</div>
@@ -1071,7 +1212,11 @@ use yii\widgets\Pjax;
 });</script>
 ```
 
+所有被包裹的内容，包括翻页和排序链接，都会通过AJAX重新加载。
+
 #### 指定一个自定义ID
+
+Pjax从AJAX请求获取页面内容，然后使用相同的ID释放它自己的DOM元素。你可以通过渲染没有布局的内容加速页面渲染性能，尤其是对于Pjax请求：
 
 ```
 public function actionIndex()
@@ -1089,15 +1234,25 @@ public function actionIndex()
 }
 ```
 
+默认情况下，`yii\base\Widget::getId`方法会自增标识符，因此小组件在任何页面上，都会有一个自增的属性：
+
 ```
 <nav id="w0">...</nav> // Main navigation
 <ul id="w1">...</ul> // Breadcrumbs widget
 <div id="w2">...</div> // Pjax widget
 ```
 
+使用`renderPartial()`或者`renderAjax()`方法进行渲染，不需要渲染布局，你自己的页面将会有一个带有数字0的小组件：
+
 ```
 <div id="w0">...</div> // Pjax widget
 ```
+
+在这个结果中，你自己的小组件将不会在下次请求中通过`w2`选择器找到自己的block。
+
+但是，Pjax将会在Ajax响应中通过`w2`选择器找到相同的block。在这个结果中，你自己的小组件将不会在下次请求中通过`w2`选择器找到这个block。
+
+因此，你必须为你的Pjax小组件手动指定一个唯一标识符，来避免冲突：
 
 ```
 <?php Pjax::begin(['id' => 'countries']) ?>
@@ -1105,9 +1260,9 @@ public function actionIndex()
 <?php Pjax::end() ?>
 ```
 
-
-
 #### 使用ActiveForm
+
+默认情况下，Pjax只和被包裹的快交互。如果你想和`ActiveForm`小组件一起使用它，你必须使用表单的`data-pjax`选项：
 
 ```
 <?php
@@ -1122,7 +1277,13 @@ use \yii\widgets\ActiveForm;
 <?php Pjax::end(); ?>
 ```
 
+它会为表单的提交事件添加相应的监听器。
+
+你也可以使用Pjax小组件的`$formSelector`选项，来指定什么表单提交将会出发`pjax`。
+
 #### 使用客户端脚本
+
+你可以订阅容器事件：
 
 ```
 <?php $this->registerJs('
@@ -1131,6 +1292,8 @@ use \yii\widgets\ActiveForm;
     });
 '); ?>
 ```
+
+或者，你可以通过使用它的选择器，手动重新加载容器：
 
 ```
 <?php $this->registerJs('
@@ -1142,13 +1305,38 @@ use \yii\widgets\ActiveForm;
 
 ### 工作原理...
 
+Pjax是任何代表片段的一个容器。它订阅片段中所有链接的点击事件，并替换整个页面，使用Ajax调用重新加载它。我们可以使用`data-pjax`属性用于被包裹的表单，以及任何表单提交将会触发一个Ajax请求。
+
+这个小组件将会加载和更新on-the-fly小组件内容，而不需要再加布局资源（JS，CSS）。
+
+你可以配置小组件的`$linkSelector`来指定什么链接将会触发Pjax，以及配置`$formSelector`来指定什么样的表单提交将会触发Pjax。
+
+你可以为容器中一个指定的链接禁用Pjax，方法是给这个链接添加一个`data-pjax="0"`属性。
+
 ### 参考
+
+- 欲了解更多关于这个扩展的用法，参考：
+    + [http://www.yiiframework.com/doc-2.0/yii-widgets-pjax.html](http://www.yiiframework.com/doc-2.0/yii-widgets-pjax.html)
+    + [https://github.com/yiisoft/jquery-pjax](https://github.com/yiisoft/jquery-pjax)
+- 欲了解更多关于客户端选项和方法的信息，参考[https://github.com/yiisoft/jquery-pjax#usage](https://github.com/yiisoft/jquery-pjax#usage)
 
 ## Redis数据库驱动
 
+这个扩展允许你在基于Yii2框架的任何项目中使用Redis键值对存储。它包含了`Cache`和`Session`两个存储句柄，以及这个扩展，它实现了ActiveRecord模式，用于访问Redis数据库记录。
+
 ### 准备
 
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
+2. 安装存储[http://redis.io](http://redis.io)
+3. 使用如下命令安装migration：
+
+```
+composer require yiisoft/yii2-redis
+```
+
 ### 如何做...
+
+首先，在你的配置文件中配置`Connection`类：
 
 ```
 return [
@@ -1166,15 +1354,21 @@ return [
 
 #### 直接使用方法
 
+对于Redis命令的低级使用，你可以使用这个连接组件的`executeCommand()`方法：
+
 ```
 Yii::$app->redis->executeCommand('hmset', ['test_collection', 'key1', 'val1', 'key2', 'val2']);
 ```
+
+你也可以使用简化的快捷方式，而不是调用`executeCommand`：
 
 ```
 Yii::$app->redis->hmset('test_collection', 'key1', 'val1', 'key2', 'val2')
 ```
 
 #### 使用ActiveRecord
+
+欲通过`ActiveRecord`模式访问Redis记录，你的记录类需要从`yii\redis\ActiveRecord`基类扩展，并实现`attributes()`方法：
 
 ```
 class Customer extends \yii\redis\ActiveRecord
@@ -1190,6 +1384,10 @@ class Customer extends \yii\redis\ActiveRecord
 }
 ```
 
+任何模型的主键可以通过`primaryKey()`方法定义，如果没有指定，它的缺省值是`id`。如果你没有通过`primaryKey()`手动执行这个主键的话，它需要被放置在属性列表中。
+
+下面是一个使用例子：
+
 ```
 $customer = new Customer();
 $customer->name = 'test';
@@ -1201,26 +1399,18 @@ $customer = Customer::find()->where(['name' => 'test'])->one();
 
 ### 工作原理...
 
+这个扩展提供了一个`Connection`组件，用于对Redis存储记录的低级访问。
+
+你也可以使用一个类ActiveRecord的模型，它带有一些方法的集合（`where()`，`limit()`，`offset()`和`indexBy()`）。其它方法不存在，因为Redis不支持SQL查询。
+
+在Redis中没有表，所以你不能定义via relation via a junction table name。你只需要通过`hasMany`关系定义一个多对多的关系。
+
+关于Yii的ActiveRecord的一般信息，参考第三章，*ActiveRecord，模型和数据库*。
+
 ### 参考
 
-
-
-
-
-
-
-![](../images/711.png)
-
-![](../images/712.png)
-
-![](../images/713.png)
-
-![](../images/714.png)
-
-![](../images/715.png)
-
-![](../images/716.png)
-
-![](../images/717.png)
-
-![](../images/718.png)
+- 欲了解更多关于这个扩展使用的信息，参考：
+    + [https://github.com/yiisoft/yii2-redis/blob/master/docs/guide/README.md](https://github.com/yiisoft/yii2-redis/blob/master/docs/guide/README.md)
+    + [http://www.yiiframework.com/doc-2.0/ext-redis-index.html](http://www.yiiframework.com/doc-2.0/ext-redis-index.html)
+- 欲了解关于Redis键值对存储的信息，参考：[http://redis.io/documentation](http://redis.io/documentation)
+- 第三章，*ActiveRecord，模型和数据库*中的ActiveRecord用法
