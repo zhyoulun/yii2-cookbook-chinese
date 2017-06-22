@@ -520,9 +520,15 @@ TagDependency::invalidate(\Yii::$app->cache, 'articles');
 
 ## 使用Yii profiling一个应用
 
+如果在部署一个Yii应用时，你使用了所有的最佳实践，但是你仍然得不到你想要的性能，很有可能是应用本身存在一些性能瓶颈。在处理这些性能瓶颈时最主要的原则是你不应该假设任何事请，并在尝试优化它之前去测试和profile代码。
 
+在本小节中，我们将会尝试找出Yii2最小应用的性能瓶颈。
 
 ### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+1. 设置数据库连接，并应用如下migration：
 
 ```
 <?php
@@ -557,6 +563,9 @@ class m160308_093233_create_example_tables extends Migration
     }
 }
 ```
+
+2. 在Yii中为每一个表生成模型。
+3. 写如下控制台命令：
 
 ```
 <?php
@@ -601,9 +610,13 @@ class DataController extends Controller
 }
 ```
 
+并执行它：
+
 ```
 ./yii data/init
 ```
+
+4. 添加`ArticleController`类：
 
 ```
 <?php
@@ -627,6 +640,7 @@ class ArticleController extends Controller
 }
 ```
 
+5. 添加`views/article/index.php`视图：
 
 ```
 <?php
@@ -647,6 +661,8 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 ```
 
+然后添加`views/article/_item.php`：
+
 ```
 <?php
 use yii\helpers\Html;
@@ -664,8 +680,13 @@ use yii\helpers\Html;
 
 ### 如何做...
 
+跟随如下步骤，profile基于Yii的应用：
+
+1. 打开文章页面：
 
 ![](../images/906.png)
+
+2. 打开`views/article/index.php`并在`ListView`小部件之前和之后添加profiler调用：
 
 ```
 <div class="article-index">
@@ -680,9 +701,19 @@ use yii\helpers\Html;
 </div>
 ```
 
+现在刷新这个页面。
+
+3. 展开页面底部的调试面板，点击timing badge(在我们的例子中是**73ms**)：
+
 ![](../images/907.png)
 
+现在检查**Profiling**报告：
+
 ![](../images/908.png)
+
+我们可以看到我们的文章块花费了将近40ms。
+
+4. 打开我们的控制器，并为文章的`category`关系添加主动加载：
 
 ```
 class ArticleController extends Controller
@@ -700,15 +731,25 @@ class ArticleController extends Controller
 }
 ```
 
+5. 回到网站，刷新页面，再次打开**Profiling**报告：
+
 ![](../images/909.png)
 
+现在这个文章列表花费了将近25ms，因为应用使用主动加载做了更少的SQL查询。
+
 ### 工作原理...
+
+你可以使用`Yii::beginProfile`和`Yii::endProfile`查看源代码的任何片段：
 
 ```
 Yii::beginProfile('articles');
 // ...
 Yii::endProfile('articles');
 ```
+
+在执行过页面以后，你可以在调试模块的**Profiling**页面看到这个报告，有所有的执行时间。
+
+此外，你可以使用嵌套profiling调用：
 
 ```
 Yii::beginProfile('outer');
@@ -718,12 +759,24 @@ Yii::beginProfile('outer');
 Yii::endProfile('outer');
 ```
 
+**注意**：注意要正确的打开和关闭调用，以及正确命名block名称。如果你忘记调用`Yii::endProfile`，或者颠倒了`Yii::endProfile('inner')`和`Yii::endProfile('outer')`的嵌套顺序，性能Profiling将不会工作。
 
 ### 参考
 
+- 欲了解更多关于logger的信息，参考[http://www.yiiframework.com/doc-2.0/guide-runtime-logging.html#performance-profiling](http://www.yiiframework.com/doc-2.0/guide-runtime-logging.html#performance-profiling)
+- 关于应用性能的调优，参考[http://www.yiiframework.com/doc-2.0/guide-tutorial-performance-tuning.html](http://www.yiiframework.com/doc-2.0/guide-tutorial-performance-tuning.html)
+
 ## Leveraging HTTP缓存
 
+不只是服务端的缓存，你通过设置HTTP头可以使用客户端缓存。
+
+在这个小节中，我们将会讨论基于`Last-Modified`和`ETag`头的全页缓存。
+
 ### 准备
+
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
+1. 创建并运行migration：
 
 ```
 <?php
@@ -748,6 +801,7 @@ class m160308_093233_create_example_tables extends Migration
 }
 ```
 
+2. 创建`Article`模型：
 
 ```
 <?php
@@ -770,6 +824,7 @@ class Article extends ActiveRecord
 }
 ```
 
+3. 创建带有如下动作的博客控制器：
 
 ```
 <?php
@@ -823,6 +878,8 @@ class BlogController extends Controller
 }
 ```
 
+4. 添加`views/blog/index.php`视图：
+
 ```
 <?php
 use yii\helpers\Html;
@@ -836,6 +893,8 @@ $this->params['breadcrumbs'][] = $this->title;
     <div>Updated <?= Yii::$app->formatter->asDatetime($article->updated_at) ?></div>
 <?php endforeach ?>
 ```
+
+5. 添加视图`views/blog/view.php`：
 
 ```
 <?php
@@ -851,13 +910,20 @@ $this->params['breadcrumbs'][] = $this->title;
 <p><?= Yii::$app->formatter->asNtext($article->text) ?></p>
 ```
 
-
-
 ### 如何做...
+
+执行如下步骤来leverage HTTP缓存：
+
+1. 访问`http://yii-book.app/index.php?r=blog/create`三次，来创建三个文章。
+2. 打开如下博客地址：
 
 ![](../images/910.png)
 
+3. 在你的浏览器中打开开发者控制台，每次刷新页面都可以看到`200 OK`的响应状态：
+
 ![](../images/911.png)
+
+4. 打开`BlogController`并附加如下行为：
 
 ```
 <?php
@@ -887,17 +953,30 @@ class BlogController extends Controller
 }
 ```
 
+5. 接下来，刷新页面几次，并检查服务器返回的是`304 Not Modified`，而不是`200 OK`：
+
 ![](../images/912.png)
+
+6. 使用如下URL打开相关页面，更新相关文章：`http://yiibook.app/index.php?r=blog/update`。
+7. 更新过博客页面以后，检查服务器首次返回的是`200 OK`，接着就是`304 Not Modified`，并确认你在页面上看到了新的更新时间：
 
 ![](../images/913.png)
 
+8. 从我们的页面上打开任何页面：
+
 ![](../images/914.png)
+
+确认服务器首次返回的是`200 OK`，以及接下来的请求是`304 Not Modified`。
 
 ### 工作原理...
 
-
+在HTTP头的帮助下，你的浏览器用基于时间和基于内容的方法，来检查缓存响应内容的可用性。
 
 #### 上次修改时间
+
+这个方法建议服务端必须返回每个文章的上次修改时间。在存储这个这个日期之后，我们的浏览器可以在接下来的每次请求中，在`If-Modified-Since`头设置这个值。
+
+我们必须附加这个`action`过滤器到我们的控制器中，并指定`lastModified`回到：
 
 ```
 <?php
@@ -920,7 +999,19 @@ class BlogController extends Controller
 }
 ```
 
+`\yii\filters\HttpCache`类调用这个回调，并将返回值和`$_SERVER['HTTP_IF_MODIFIED_SINCE']`系统变量进行比较。如果这个文章没有改变，`HttpCache`将会发送一个轻量级的`304`响应头，而且不需要运行这个动作。
+
+但是，如果文档更新了，这个缓存将会失效，服务端将会返回一个完整的响应。
+
+![](../images/917.png)
+
+作为`Last-Modified`的备选或者补充，你可以使用`ETag`。
+
 #### Entity标签
+
+如果我们没有存储上次修改时间，我们可以使用自定义hash，它可以基于文章的内容生成。
+
+例如，我们可以为我们的文档使用一个内容标题，来做了一个hash值：
 
 ```
 class BlogController extends Controller
@@ -944,14 +1035,39 @@ class BlogController extends Controller
 }
 ```
 
+这个`HttpCache`过滤器会将这个tag附加到服务器响应的`ETag`头变量上。
+
+在存储了`ETag`之后，我们的浏览器会为接下来的每次请求附加它在`If-None-Match`头上。
+
+如果这个文档仍然为改变，`HttpCache`将会发送一个轻量级的`304`响应头，并且不需要运行这个动作。
+
+![](../images/918.png)
+
+![](../images/919.png)
+
+当这个缓存是合法的，我们的应用将会发送`304 Not Modified`响应头，而不是页面内容，而且不会重复运行控制器和动作。
+
 ### 参考
+
+- 欲了解更多关于HTTP缓存，参考[https://developers.google.com/web/fundamentals/performance/optimizing-content-efficiency/http-caching](https://developers.google.com/web/fundamentals/performance/optimizing-content-efficiency/http-caching)
+- 对于Yii2中的HTTP缓存，参考[http://www.yiiframework.com/doc-2.0/guide-cachinghttp.html](http://www.yiiframework.com/doc-2.0/guide-cachinghttp.html)
 
 ## 和并和最小化assets
 
+如果你的页面包含很多CSS和/或Javascript文件，这个页面将会打开的比较慢，因为浏览器发送了大量的HTTP请求来下载每一个文件。为了减少请求和连接的数量，我们可以在生产模式下合并和压缩多个CSS/Javascript文件到一个或者非常少的几个文件，然后将这些压缩的文件包含在页面上。
 
 ### 准备
 
+- 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+- 从[https://developers.google.com/closure/compiler/](https://developers.google.com/closure/compiler/)下载`compiler.jar`文件
+- 从[https://github.com/yui/yuicompressor/releases](https://github.com/yui/yuicompressor/releases)下载`yuicompressor.jar`文件
+- 从[http://www.java.com](http://www.java.com)下载jre。
+
 ### 如何做...
+
+跟随如下步骤，来和并和最小化资源：
+
+1. 打开你的应用`index`页面的源HTML代码。检查是否和如下结构比较相似：
 
 ```
 <!DOCTYPE html>
@@ -972,6 +1088,9 @@ class BlogController extends Controller
 </html>
 ```
 
+这个页面包含三个Javascript文件。
+
+2. 打开`config/console.php`文件，并添加`@webroot`和`@web` alias定义：
 
 ```
 <?php
@@ -979,10 +1098,13 @@ Yii::setAlias('@webroot', __DIR__ . '/../web');
 Yii::setAlias('@web', '/');
 ```
 
+3. 打开一个控制台，并运行如下命令：
+
 ```
 yii asset/template assets.php
 ```
 
+4. 打开生成的`assets.php`文件，并按如下配置：
 
 ```
 <?php
@@ -1010,6 +1132,8 @@ return [
     ],
 ];
 ```
+
+5. 运行合并命令`yii asset assets.php config/assets-prod.php`。如果成功，你就能得到带有如下配置的`config/assets-prod.php`文件：
 
 ```
 <?php
@@ -1073,6 +1197,7 @@ return [
 ];
 ```
 
+6. 在`config/web.php`文件中为`assetManager`组件添加配置：
 
 ```
 'components' => [
@@ -1083,10 +1208,13 @@ return [
 ],
 ```
 
+7. 在`web/index.php`打开生产模式：
 
 ```
 defined('YII_ENV') or define('YII_ENV', 'prod');
 ```
+
+8. 在你的浏览器中刷新这个页面，就能看到HTML代码。现在应该有一条包含我们压缩文件的一行：
 
 ```
 <!DOCTYPE html>
@@ -1107,6 +1235,7 @@ all-fe792d4766bead53e7a9d851adfc6ec2.js"></script>
 
 ### 工作原理...
 
+首先，我们的页面有包含文件的集合：
 
 ```
 <link href="/assets/9b3b2888/css/bootstrap.css" rel="stylesheet">
@@ -1117,12 +1246,20 @@ all-fe792d4766bead53e7a9d851adfc6ec2.js"></script>
 <script src="/assets/9b3b2888/js/bootstrap.js"></script>
 ```
 
+接下来，我们生成`assets.php`配置文件，并制定需要压缩的东西：
+
 ```
 'bundles' => [
     'app\assets\AppAsset',
     'yii\bootstrap\BootstrapPluginAsset',
 ],
 ```
+
+**注意**：我们可以指定所有中间资源包，例如`yii\web\JqueryAsset`和`yii\web\YiiAsset`，但是这些资源已经作为`AppAsset`和`BootstrapPluginAsset`的依赖被指定了，这个压缩命令会自动解析所有的依赖。
+
+AssetManager发布所有的资源到`web/assets`经典子文件夹中，在发布过以后，它会运行压缩器，将所有的CSS和JS文件压缩到`all-{hash}.js`和`all-{hash}.css`文件中。
+
+检查这个CSS文件是否包含其它带有相对路径的资源，例如`bootstrap.css`文件中：
 
 ```
 @font-face {
@@ -1131,12 +1268,16 @@ all-fe792d4766bead53e7a9d851adfc6ec2.js"></script>
 }
 ```
 
+如果是这样的话，在和并的文件中，我们的压缩器会修改所有的相对路径：
+
 ```
 @font-face{
     font-family: 'Glyphicons Halflings';
     src: url('9b3b2888/fonts/glyphicons-halflings-regular.eot');
 }
 ```
+
+处理过以后，我们得到了`assets-prod.php`文件，里边有`assetManager`组件的配置。它定义了新的virtual资源作为原始包的干净拷贝：
 
 ```
 return [
@@ -1163,6 +1304,7 @@ return [
 ]
 ```
 
+现在，我们可以require这个配置到`config/web.php`文件中：
 
 ```
 'components' => [
@@ -1173,6 +1315,7 @@ return [
 ],
 ```
 
+或者，我们可以只在生产环境中require这个文件：
 
 ```
 'components' => [
@@ -1183,14 +1326,28 @@ return [
 ],
 ```
 
+**注意**：不要忘记在更新了原始资源后重新生成所有的压缩和合并文件。
+
 ### 参考
 
+- 欲了解更多关于assets的信息，参考[http://www.yiiframework.com/doc-2.0/guide-structure-assets.html](http://www.yiiframework.com/doc-2.0/guide-structure-assets.html)
+- Closure Compiler的信息，参考[https://developers.google.com/closure/compiler/](https://developers.google.com/closure/compiler/)
+- 对于YUI压缩器的信息，参考[https://github.com/yui/yuicompressor/](https://github.com/yui/yuicompressor/)
 
 ## 在HHVM上运行Yii2
 
+**HipHop Virtual Machine (HHVM)**是一个处理虚拟机器，来自Facebook，基于just-in-time（JIT）编译。HHVM将PHP代码翻译成功中间的**HipHop bytecode (HHBC)**，并动态翻译PHP代码为机器码，它可以被优化并原生的执行。
+
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
 ### 如何做...
+
+根据如下步骤，在HHVM上运行Yii：
+
+1. 安装Apache2或者Nginx web服务器：
+2. 跟随这个指南[https://docs.hhvm.com/hhvm/installation/introduction](https://docs.hhvm.com/hhvm/installation/introduction)，在Linux或者Mac上安装HHVM。例如在Ubuntu上，你需要运行如下命令：
 
 ```
 sudo apt-get install software-properties-common
@@ -1233,13 +1390,20 @@ setup:
 ****
 ```
 
+3. 尝试为你的网站手动启动内置服务器：
 
 ```
 cd web
 hhvm -m server -p 8080
 ```
 
+在你的浏览器中打开`localhost:8080`：
+
 ![](../images/915.png)
+
+现在你就可以使用HHVM来开发你的项目了。
+
+4. 如果你使用Nginx或者Apache2服务器，HHVM会在`/etc/nginx`和`/etc/apache2`目录中自动创建它自己的配置文件。在Nginx的例子中，它会创建`/etc/nginx/hhvm.conf`模板，来包含你的项目的配置。例如，我们来创建一个新的虚拟托管名叫`yii-book-hhvm.app`：
 
 ```
 server {
@@ -1252,21 +1416,38 @@ server {
 }
 ```
 
+添加hostname到你的`/etc/hosts`：
+
 ```
 127.0.0.1 yii-book-hhvm.app
 ```
+
+现在重启这个Nginx服务器：
 
 ```
 sudo service nginx restart
 ```
 
+最后，在浏览器中打开这个新的host：
+
 ![](../images/916.png)
 
+你的服务器被成功设置。
+
 ### 工作原理...
+
+你可以在`fastcgi`模式下使用HHVM作为PHP处理的备选项。默认情况下，它会监听9000端口。你可以在`/etc/hhvm/server.ini`文件中修改`fastcgi`进程的这个默认端口：
 
 ```
 hhvm.server.port = 9000
 ```
 
+在`/etc/hhvm/php.ini`文件中配置这个指定的PHP选项：
+
 ### 参考
 
+欲了解更多关于安装HHVM的信息，参考如下地址：
+- [https://docs.hhvm.com/hhvm/installation/linux](https://docs.hhvm.com/hhvm/installation/linux)
+- [https://docs.hhvm.com/hhvm/installation/mac](https://docs.hhvm.com/hhvm/installation/mac)
+
+欲了解更多关于HHVM使用方法的信息，参考[https://docs.hhvm.com/hhvm/](https://docs.hhvm.com/hhvm/)

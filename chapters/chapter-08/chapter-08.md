@@ -1603,7 +1603,11 @@ public function behaviors()
 
 首先我们来做一些计划。
 
-在`yii2-app-basic`中使用缺省配置，所有的日志被存放在`runtime/logs/app.log`文件中。
+在`yii2-app-basic`中使用缺省配置，所有的日志被存放在`runtime/logs/app.log`文件中。我们可以使用正则表达式将所有的消息从文件中提取出来，然后将他们展示在**GridView**小部件上。此外，我们允许用户为日志文件配置自定义路径。
+
+执行如下步骤：
+
+1. 创建`modules/log`文件夹，并创建`Module`类文件：
 
 ```
 <?php
@@ -1614,6 +1618,7 @@ class Module extends \yii\base\Module
 }
 ```
 
+2. 创建一个简单的模型，用于从日志文件中转换每行内容：
 
 ```
 <?php
@@ -1630,6 +1635,8 @@ class LogRow extends Object
     public $text;
 }
 ```
+
+3. 写一个日志文件读取类，它会解析文件每行内容，逆序排列，返回`LogRow`模型的实例向量：
 
 ```
 <?php
@@ -1676,6 +1683,7 @@ class LogReader
 }
 ```
 
+4. 添加一个帮助类，用于为日志等级展示美化的HTML-badges：
 
 ```
 <?php
@@ -1702,6 +1710,7 @@ class LogHelper
 }
 ```
 
+5. 创建一个模块控制器，它会从读取器中获取行的数组，并将他们传递给`ArrayDataProvider`：
 
 ```
 <?php
@@ -1728,6 +1737,7 @@ class DefaultController extends Controller
 }
 ```
 
+6. 现在，创建`modules/log/default/index.php`视图文件：
 
 ```
 <?php
@@ -1768,6 +1778,7 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 ```
 
+7. 在文件`config/web.php`中附加模块到你的应用中：
 
 ```
 $config = [
@@ -1783,6 +1794,8 @@ $config = [
 ];
 ```
 
+8. 在`views/layouts/main.php`文件中添加一个到这个控制器的链接：
+
 ```
 echo Nav::widget([
     'options' => ['class' => 'navbar-nav navbar-right'],
@@ -1797,20 +1810,41 @@ echo Nav::widget([
 NavBar::end();
 ```
 
+9. 访问`/index.php?r=log`，确保这个模块可以正常工作：
+
 ![](../images/807.png)
 
 ### 工作原理...
 
+你可以通过独立的模块来组织你的控制器、模型、视图和其它组件，并将他们附加到你的应用中。你可以使用Gii或者手动生成一个模块模板。
 
+没一个模块包含一个主模块类，我们可以定义可配置的属性，定义修改路径，附加控制器等等。默认情况下，使用Gii生成的模块会运行默认控制器的`index`动作。
 
 ### 参考
 
+- 欲了解更多关于模块的信息，以及最佳实践，参考[http://www.yiiframework.com/doc-2.0/guide-structure-modules.html](http://www.yiiframework.com/doc-2.0/guide-structure-modules.html)
+- *制作可发布扩展*小节
 
 ## 创建一个自定义视图渲染器
 
+这里有许多PHP模板引擎。Yii2只提供原生PHP模板。如果你想使用一个存在的模板引擎，或者创建你自己的，你需要实现它——当然，如果还没有被Yii社区实现的话。
+
+在本小节中，我们将会重新实现Smarty模板支持。
+
 ### 准备
 
+1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+2. 安装Smarty库：
+
+```
+composer require smarty/smarty
+```
+
 ### 如何做...
+
+执行如下步骤，创建一个自定义视图渲染器：
+
+1. 创建`smarty/ViewRenderer.php`：
 
 ```
 <?php
@@ -1847,6 +1881,7 @@ class ViewRenderer extends \yii\base\ViewRenderer
 }
 ```
 
+2. 现在，我们需要连接这个视图渲染器到应用中。在`config/web.php`文件中，我们需要添加视图组件的渲染器：
 
 ```
 'components' => [
@@ -1861,6 +1896,8 @@ class ViewRenderer extends \yii\base\ViewRenderer
     //...
 ];
 ```
+
+3. 现在让我们测试它。创建一个新的`SmartyController`：
 
 ```
 <?php
@@ -1877,6 +1914,8 @@ class SmartyController extends Controller
 }
 ```
 
+4. 接下来，我们需要创建`views/smarty/index.tpl`视图：
+
 ```
 <div class="smarty-index">
     <h1>Smarty Example</h1>
@@ -1884,9 +1923,13 @@ class SmartyController extends Controller
 </div>
 ```
 
+5. 尝试访问这个控制器。如果成功的话，你应该能得到如下输出：
+
 ![](../images/808.png)
 
 ### 工作原理...
+
+视图渲染器继承了`yii\base\ViewRenderer`抽象类，并只需要实现一个方法`render`：
 
 ```
 <?php
@@ -1908,6 +1951,8 @@ abstract class ViewRenderer extends Component
 }
 ```
 
+因此，我们会获得一个视图组件、文件路径和渲染变量。我们需要处理这个问题，并返回渲染的结果。在我们的例子中，处理它自己是通过Smarty模板引擎完成的，所以我们需要正确的初始化它，并调用它的处理方法：
+
 ```
 class ViewRenderer extends \yii\base\ViewRenderer
 {
@@ -1928,6 +1973,10 @@ class ViewRenderer extends \yii\base\ViewRenderer
 }
 ```
 
+将Yii临时文件存放在应用runtime文件夹中是一个好习惯。这就是为什么我们设置`compile`文件夹（Smarty存储它的编译为PHP的模板）到`runtime/smarty/compile`。
+
+渲染它自己非常简单：
+
 ```
 public function render($view, $file, $params)
 {
@@ -1940,14 +1989,33 @@ public function render($view, $file, $params)
 }
 ```
 
+通过`$this->render`设置的数据被传递到Smarty模板。此外，我们创建特殊的Smarty模板变量，名叫`app`和`this`，它分别指向`Yii:$app`和`Yii::$app->view`，这允许我们在一个模板内部获取应用属性。
+
+然后，我们就可以渲染这个模板了。
 
 ### 参考
 
+你可以立刻使用带有插件和配置支持的Smarty视图渲染器，在[https://github.com/yiisoft/yii2-smarty](https://github.com/yiisoft/yii2-smarty)。
+
+为了了解更多关于Smarty和视图渲染器，参考如下地址：
+
+- [http://www.smarty.net](http://www.smarty.net)
+- [http://www.yiiframework.com/doc-2.0/guide-tutorial-templateengines.html](http://www.yiiframework.com/doc-2.0/guide-tutorial-templateengines.html)
+- [http://www.yiiframework.com/doc-2.0/guide-structure-views.html](http://www.yiiframework.com/doc-2.0/guide-structure-views.html)
+
 ## 创建一个多语言应用
+
+每一天，我们会见越来越多的国际公司、软件产品和信息资源，他们发布的内容都是多语言的。Yii2提供内置i18n支持，用于制作多语言应用。
+
+在本小节中，我们翻译应用接口到不同的语言上。
 
 ### 准备
 
+按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的`yii2-app-basic`应用。
+
 ### 如何做...
+
+1. 在`views/layouts/main.php`文件修改主菜单标签，使用`Yii::t('app/nav', '...')`方法：
 
 ```
 echo Nav::widget([
@@ -1961,11 +2029,14 @@ echo Nav::widget([
 ]);
 ```
 
+2. 修改所有的标题和面包屑，使用`Yii::t('app, '...')`方法：
 
 ```
 $this->title = Yii::t('app', 'Contact');
 $this->params['breadcrumbs'][] = $this->title;
 ```
+
+3. 此外，修改你所有按钮的标签：
 
 ```
 <div class="form-group">
@@ -1973,11 +2044,15 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 ```
 
+修改其它硬编码的信息：
+
 ```
 <p>
 <?= Yii::t('app', 'The above error occurred while the Web server was processing your request.') ?>
 </p>
 ```
+
+4. 修改你的`LoginForm`表单的属性标签：
 
 ```
 class LoginForm extends Model
@@ -1994,6 +2069,7 @@ class LoginForm extends Model
 }
 ```
 
+此外，修改`ContactForm`模型的属性标签：
 
 ```
 class ContactForm extends Model
@@ -2012,10 +2088,16 @@ class ContactForm extends Model
 }
 ```
 
+它会输出翻译后的标签。
+
+5. 为了准备翻译，创建`messages`目录。马上，我们可以为所有需要的语言创建翻译文件。我们可以手动制作，但是有一个很有用的爬虫，它会扫描所有的项目文件，并为所有的消息构建`Yii::t()`构造。我们来使用它。
+6. 为消息扫描器生成配置文件：
 
 ```
 ./yii message/config-template config/messages.php
 ```
+
+7. 打开配置文件，设置如下值：
 
 ```
 <?php
@@ -2046,11 +2128,13 @@ return [
 ];
 ```
 
+8. 运行爬虫，并将这个配置文件传递给它：
 
 ```
 ./yii message config/messages.php
 ```
 
+9. 在处理过以后，我们能得到如下文件夹结构：
 
 ```
 messages
@@ -2068,6 +2152,8 @@ messages
     └── app.php
 ```
 
+10. 例如，`messages/de/app/contact`包含如下内容：
+
 ```
 <?php
 ...
@@ -2079,6 +2165,9 @@ return [
 ];
 ```
 
+11. 它是一个纯PHP数组，原始的句子会放在keys的的位置，翻译后的消息会放在values的位置上。
+12. 只需要将翻译成德语的内容放在值的位置上：
+
 ```
 <?php
 ...
@@ -2089,6 +2178,7 @@ return [
 ];
 ```
 
+13. 在`config/web.php`文件中附加这些翻译到应用的`i18n`组件上：
 
 ```
 $config = [
@@ -2111,7 +2201,11 @@ $config = [
 ];
 ```
 
+14. 打开登录页面，会有默认语言：
+
 ![](../images/809.png)
+
+15. 修改应用语言为`de`：
 
 ```
 $config = [
@@ -2123,9 +2217,19 @@ $config = [
 ];
 ```
 
+然后刷新登录页面：
+
 ![](../images/810.png)
 
+16. 内置的框架消息和默认校验错误也会被自动翻译。
+
 ### 工作原理...
+
+Yii2提供`Yii::t()`方法，用于通过`i18n`组件翻译接口消息，它支持不用的源类型。在本小节中，我们使用的是`yii\i18n\hpMessageSource`，它用纯PHP文件存储了翻译后的消息。
+
+这个框架没有人工智能，不支持自己翻译消息。你必须在文件或者在数据库中放好准备好的翻译，框架会从消息源中获取需要的信息。
+
+你可以手动设置当前语言：
 
 ```
 $config = [
@@ -2135,10 +2239,13 @@ $config = [
 ];
 ```
 
+如果不在配置文件中设置语言的话，你可以在运行时设置应用语言：
+
 ```
 Yii::$app->language = 'fr';
 ```
 
+例如，如果你存放用户语言在`User`模型的`lang`字段上，你可以创建语言加载器：
 
 ```
 <?php
@@ -2155,6 +2262,7 @@ class LanguageBootstrap implements BootstrapInterface
 }
 ```
 
+在bootstraping列表中注册这个类：
 
 ```
 $config = [
@@ -2165,18 +2273,66 @@ $config = [
 ];
 ```
 
+现在，每一个认证的用户将会看到他们自己语言的界面。
+
+此外，你可以复写`yii\web\UrlManager`，用于将当前语言作为GET参数传递，或者是一个URL的前缀方式传递。此外，作为备选项，你可以在浏览器的cookie中存放选择的语言。
+
+当你使用Gii生成模型或者其它代码时，你可以检查如下选项：
+
 ![](../images/811.png)
+
+在生成的代码中，所有的标签都被嵌入到`Yii::t()`中。
+
+**注意**：本小节中我们没有讨论模型内容的翻译。但是，例如，你可以在数据库中独立的表中存放翻译后的文本（例如`post_lang`表存放帖子模型表），并使用`Yii::$app->language`属性，获取当前语言，并为你的模型提取需要的内容。
 
 ### 参考
 
+欲了解Yii2中更多关于国际化的信息，参考[http://www.yiiframework.com/doc-2.0/guide-tutorial-i18n.html](http://www.yiiframework.com/doc-2.0/guide-tutorial-i18n.html)。
 
 ## 制作可发布的扩展
 
+在本章中，你学到了如何创建各种类型的Yii扩展。现在我们来讨论如何分享你的结果，以及为什么这是重要的。
+
 ### 准备
+
+首先为一个好的扩展准备一个清单。一个好的编程产品应该遵守如下点：
+
+- 好的代码风格
+- 人们应该找到它
+- 一致性，易读，易使用的API
+- 好的文档
+- 扩展应该应用到大部分常用的使用例子上
+- 应该被维护
+- 充分被测试，理想情况下使用单元测试
+- 你需要为它提供支持
+
+当然，所有这些需要很多工作，但是他们是创建一个好产品所必需的的。
 
 ### 如何做...
 
+1. 每一个现代PHP产品应该遵守自动加载的PSR4标准，以及编码风格的PSR1和PSR2标准，这些标准参考指南[http://www.php-fig.org/psr/](http://www.php-fig.org/psr/)。
+2. 详细回顾我们的清单，从API开始，API应该有一致性，易读易使用。一致性意味着所有的风格不会改变，变量名不变，没有不一致的名称，例如`isFlag1()`和`isNotFlag2()`等等。每一件事应该遵守你为你代码定义的规则。它会让你很少查看文档，把精力集中在编码上。
+3. 没有文档的代码几乎是没有用的。一个例外是相对简单的代码，但是尽管只是很少几行，如果没有一些单词说明如何安装和如何使用，感觉并不会很好。什么构成了好文档？代码的目的和他的赞成者尽可能可见，并被明显和清晰的写出来。
+4. 如果开发者不知道在哪里放置它，以及如何在应用配置中使用它，那么这个代码是没有用的。不要期望人们知道如何做框架相关的事情。安装指南应该是啰嗦的。大部分开发者都喜欢手把手的形式。如果代码需要SQL schema才能工作，就提供他们。
+5. 尽管你的API方法和属性正确的被命名了，你仍然需要使用PHPDoc注释为他们加文档，指出参数的类型和返回类型，为每一个方法提供一个简洁的描述。不要忘记受保护的和私有方法以及属性，因为这对于阅读代码和理解代码是如何工作的细节是非常有帮助的。此外，考虑在文档中列出公共方法和属性，这样它可以作为一个引用被使用。
+6. 提供被充分注释的示例案例。尝试覆盖这个扩展大部分使用方法。
+7. 在一个例子中，不要尝试一次去解决多个问题，因为这可能会让人困惑。
+8. 让你的代码更灵活非常重要，这样它就会应用到需要使用情况中。但是，因为不能为每一种使用情况创建代码，尝试覆盖大部分的情况。
+9. 让人感觉舒服很重要。提供一个良好的文档是第一步。第二步是提供一个证明，说明你的代码能按预期工作，如果未来更新来可以。最好的方式是提供一组单元测试。
+10. 扩展应该被维护，至少它是稳定的，没有更多的特性请求和bug报告。所以期望问题和报告，并保留一些时间为代码的未来工作。如果你没有更多的时间来维护扩展，但它又是非常创新的，没有在此之前做过它，它仍然是值得分享的。如果社区喜欢它，就会有人提供帮助。
+11. 最后，你需要让扩展可用。为你的扩展创建Composer包，将它放在Github或者其它分享平台上，并将它发布在[https://packagist.org](https://packagist.org)网站上。
+12. 每一个扩展应该有一个版本号，以及一个修改日志。它能让社区检查他们是否用的最新版本，以及在升级前检查修改了什么。我们建议使用[http://semver.org](http://semver.org)网站上提供的**语义化版本**规则。
+13. 尽管你的扩展相对简单，并且文档也很好，但仍然会有人在第一次使用时提问题，而能回答的人只能是你。典型情况下，问题会在官方论坛上提出，所以最好创建一个主题，这样人们可以讨论你的代码并在这个扩展页面上提供这个链接。
 
 ### 工作原理...
 
+如果你想分享一个扩展到社区，并确定它是有用的和流行的，你需要做的不只是写代码。制作可发布的扩展有非常多的工作要做。甚至多于制作扩展本身。所以，why is it good to share extensions with the community in the first place?
+
+将你自己项目中的使用的代码开源有它的赞成者。你能让人们，很多人测试你的闭源项目。使用你扩展的人在测试它，给出有价值的反馈，以及报告bug。如果你的代码是流行的，将会有热情的开发者尝试提高你的代码，让它更可扩展、更稳定以及可复用。而且，你将会感觉很爽，因为你做了一件好事。
+
+我们覆盖了大部分重要的事情。此外，有更多的事情需要检查。在写自己的扩展前尝试用已有的扩展。如果一个扩展已经非常合适了，尝试联系这个扩展的作者，并贡献你自己的想法。检查已有的代码能帮助你找到有用的技巧、需要做什么以及不应该做什么。此外，不时地检查wiki文档，和官方论坛；这里有非常多有用的信息，关于创建扩展和使用Yii进行开发。
+
 ### 参考
+
+- 欲了解更多关于PHP编码规则的信息，参考[http://www.php-fig.org/psr/](http://www.php-fig.org/psr/)
+- 欲了解更多关于语义化版本的信息，参考[http://semver.org](http://semver.org)
