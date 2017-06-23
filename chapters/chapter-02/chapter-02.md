@@ -30,7 +30,7 @@
 1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 2. 使用如下代码创建`@app/controllers/TestController.php`控制器：
 
-```
+```php
 <?php
 namespace app\controllers;
 use yii\helpers\Html;
@@ -73,7 +73,7 @@ RewriteRule . index.php
 
 1. 在`@app/config/web.php`文件中添加`urlManager`组件：
 
-```
+```php
 'components' => [
     // ..
     'urlManager' => [
@@ -109,7 +109,7 @@ RewriteRule . index.php
 
 下面我们来回顾都做了些什么，以及是如何工作的。我们的第一条规则是：
 
-```
+```php
 'home' => 'test/index',
 ```
 
@@ -123,19 +123,19 @@ RewriteRule . index.php
 
 你也可以使用一个特殊的语法创建参数化的规则。回顾一下第三条规则：
 
-```
+```php
 'page/<alias>' => test/page',
 ```
 
 这里我们定义了一个alias参数，它应该在URL中`/page/`后边被指定。它可以是任何东西，并会被传递给`$alias`参数：
 
-```
+```php
 TestController::actionPage($alias)
 ```
 
 你可以为这样一个参数定义一个模式。我们为第二条规则做同样的事情：
 
-```
+```php
 '<alias:about>' => test/page'
 ```
 
@@ -159,7 +159,7 @@ Yii不仅允许你将URL路由到不同的控制器动作上，而且可以通�
 1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 2. 找到`@app/config/web.php`文件，并替换规则数组：
 
-```
+```php
 'urlManager' => array(
     'enablePrettyUrl' => true,
     'showScriptName' => false,
@@ -183,7 +183,7 @@ RewriteRule . index.php
 
 1. 在`@app/controllers`目录中，使用如下代码创建`BlogController`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use yii\web\Controller;
@@ -216,7 +216,7 @@ class BlogController extends Controller
 
 2. 在`@app/controllers`文件夹中，使用如下代码创建`TestController`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use Yii;
@@ -232,7 +232,7 @@ class TestController extends Controller
 
 3. 在`@app/views`文件夹中，创建`test`文件夹，以及`urls.php`视图文件，文件内容如下：
 
-```
+```php
 <?php
 use yii\helpers\Url;
 use yii\helpers\Html;
@@ -278,7 +278,7 @@ use yii\helpers\Html;
 
 我们需要生成URL，指向`BlogController`的控制器动作（RssFeed, Article, List, HiTech）。
 
-```
+```php
 <?= Html::a('Link Name', ['blog/article', 'alias' => 'someAlias']); ?>
 ```
 
@@ -290,7 +290,7 @@ use yii\helpers\Html;
 
 `$_GET`变量做为参数会被传递给用内部路由指定的动作中。例如，如果我们想为`BlogController::actionArticle`创建一个URL，并将`$_GET['name']`传递给它，可以按如下方式进行：
 
-```
+```php
 <?= Html::a('Link Name', ['blog/article', 'alias' => 'someAlias']); ?>
 ```
 
@@ -300,7 +300,7 @@ use yii\helpers\Html;
 
 当你不能获得一个控制器实例时，例如，当你实施一个控制台应用，你可以使用如下两个`urlManager`创建方法：
 
-```
+```php
 <?=Yii::$app->urlManager->createUrl(['blog/rss-feed', 'param' => 'someParam'])?>
 <?=Yii::$app->urlManager->createAbsoluteUrl(['blog/rss-feed','param' => 'someParam'])?>
 ```
@@ -328,7 +328,7 @@ Yii URL路由器的一个隐藏特性是，你可以使用正则表达式来处�
 1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 2. 在你的`@app/controllers`文件夹中，使用如下代码创建`PostController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use yii\helpers\Html;
@@ -372,7 +372,7 @@ RewriteRule . index.php
 
 添加如下`urlManager`组件配置到`@app/config/web.php`：
 
-```
+```php
 'components' => [
     // ..
     'urlManager' => [
@@ -417,20 +417,20 @@ RewriteRule . index.php
 
 你可以在参数定义和规则的其它部分使用正则表达式。下面我们一条一条的看这些规则：
 
-```
+```php
 'post/<alias:[-a-z]+>' => 'post/view',
 ```
 
 alias参数应该包含一个或多个英文单词或者一个`-`。其它符号不被允许。
 
-```
+```php
 '(posts|archive)' => 'post/index',
 '(posts|archive)/<order:(DESC|ASC)>' => 'post/index',
 ```
 
 `posts`和`archive`都会指向`post/index`。`order`参数只接受两个值——`DESC`和`ASC`：
 
-```
+```php
 'sayhello/<name>' => 'post/hello',
 ```
 
@@ -463,7 +463,7 @@ alias参数应该包含一个或多个英文单词或者一个`-`。其它符号
 
 1. 首先，我们需要一个基础控制器，它只能被登录的用于使用。创建`@app/components/BaseController.php`，内容如下：
 
-```
+```php
 <?php
 namespace app\components;
 use Yii;
@@ -506,7 +506,7 @@ class BaseController extends Controller
 
 你将会得到类似如下的输出：
 
-```
+```php
 <?php
 namespace app\controllers;
 class TestController extends \app\components\BaseController
@@ -528,7 +528,7 @@ class TestController extends \app\components\BaseController
 
 如果你需要继承基础控制器的方法，记住它不能被覆盖。例如，我们需要添加一个页面动作到控制器的动作map中：
 
-```
+```php
 <?php
 namespace app\controllers;
 use yii\helpers\ArrayHelper;
@@ -587,7 +587,7 @@ class TestController extends BaseController
 
 3. 更新刚刚创建的migration的方法和导出的类列表：
 
-```
+```php
 <?php
 use yii\db\Schema;
 use yii\db\Migration;
@@ -634,7 +634,7 @@ class m150719_152435_create_post_table extends Migration
 
 1. 创建独立动作`@app/actions/CreateAction.php`：
 
-```
+```php
 <?php
 namespace app\actions;
 use Yii;
@@ -658,7 +658,7 @@ class CreateAction extends Action
 
 2. 创建独立动作`@app/actions/DeleteAction.php`：
 
-```
+```php
 <?php
 namespace app\actions;
 use yii\base\Action;
@@ -680,7 +680,7 @@ class DeleteAction extends Action
 
 3. 创建独立动作`@app/actions/IndexAction.php`：
 
-```
+```php
 <?php
 namespace app\actions;
 use yii\base\Action;
@@ -711,7 +711,7 @@ class IndexAction extends Action
 
 4. 创建独立动作`@app/actions/ViewAction.php`：
 
-```
+```php
 <?php
 namespace app\actions;
 use yii\base\Action;
@@ -734,7 +734,7 @@ class ViewAction extends Action
 
 5. 创建视图文件`@app/views/crud/create.php`：
 
-```
+```php
 <?php
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
@@ -754,7 +754,7 @@ use yii\widgets\ActiveForm;
 
 6. 创建视图文件`@app/views/crud/index.php`：
 
-```
+```php
 <?php
 use yii\widgets\LinkPager;
 use yii\helpers\Html;
@@ -784,7 +784,7 @@ use yii\helpers\Url;
 
 7. 创建视图文件`@app/views/crud/view.php`：
 
-```
+```php
 <?php
 use yii\helpers\Html;
 use yii\helpers\Url;
@@ -831,7 +831,7 @@ use yii\helpers\Url;
 
 1. 创建一个控制器`@app/controllers/TestController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\components\CustomFilter;
@@ -858,7 +858,7 @@ class TestController extends Controller
 
 2. 创建一个新的过滤器`@app/components/CustomFilter.php`：
 
-```
+```php
 <?php
 namespace app\components;
 use Yii;
@@ -902,7 +902,7 @@ class CustomFilter extends ActionFilter
 
 首先，我们添加一些代码到我们的控制器中，它实现了我们的自定义过滤器：
 
-```
+```php
 public function behaviors()
 {
 return [
@@ -941,7 +941,7 @@ return [
 
 1. 创建一个测试控制器文件`@app/controllers/TestController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use yii\web\Controller;
@@ -960,7 +960,7 @@ class TestController extends Controller
 
 2. 现在，将你的页面放进`views/test/pages`，命名为`index.php`和`contact.php`。`index.php`文件的内容如下：
 
-```
+```html
 <h1>Index</h1>
 content of index file
 Contact.php content is:
@@ -996,7 +996,7 @@ Contact.php content is:
 
 `ViewAction`动作为你提供了一种方式，可以用于修改你的控制器，但是这个URL看着像`http://yii-book.app/index.php?r=test/page&page=about`。为了使URL更短更可读，添加一个URL规则到`urlManager`组件：
 
-```
+```php
 '<view:about>' => 'test/page'
 ```
 
@@ -1026,7 +1026,7 @@ Contact.php content is:
 
 1. 创建一个控制器`@app/controllers/TestController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use Yii;
@@ -1083,7 +1083,7 @@ class TestController extends Controller
 
 2. 此外，创建`@app/views/common/alert.php`视图：
 
-```
+```php
 <?php
 use yii\bootstrap\Alert;
 ?>
@@ -1103,7 +1103,7 @@ use yii\bootstrap\Alert;
 
 3. 创建视图`@app/views/test/index.php`：
 
-```
+```php
 <?php
 /* @var $this yii\web\View */
 ?>
@@ -1114,7 +1114,7 @@ use yii\bootstrap\Alert;
 
 4. 创建视图`@app/views/test/user.php`：
 
-```
+```php
 <?php
 /* @var $this yii\web\View */
 ?>
@@ -1147,7 +1147,7 @@ use yii\bootstrap\Alert;
 
 有时你需要处理所有的flashs。你可以使用一个简单的方式来处理它，如下所示：
 
-```
+```php
 $flashes = Yii::$app->session->getAllFlashes();
 <?php foreach ($flashes as $key => $message): ?>
 <?= Alert::widget([
@@ -1162,7 +1162,7 @@ $flashes = Yii::$app->session->getAllFlashes();
 
 当你需要flush所有的flash时，使用下面的方法：
 
-```
+```php
 Yii::$app->session->removeAllFlashes();
 ```
 
@@ -1170,7 +1170,7 @@ Yii::$app->session->removeAllFlashes();
 
 当你需要移除指定的键，使用如下方法：
 
-```
+```php
 Yii::$app->session->removeFlash('success');
 ```
 
@@ -1195,7 +1195,7 @@ Yii视图非常强大，并且有许多特性。其中一个就是你可以在�
 
 1. 创建`controllers/ViewController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use yii\web\Controller;
@@ -1218,7 +1218,7 @@ class ViewController extends Controller
 
 2. 现在，我们创建`views/view.php`来展示我们可以做的事情：
 
-```
+```php
 <h1><?= $this->context->pageTitle ?></h1>
 <p>Hello call. <?php $this->context->hello() ?></p>
 ```
@@ -1250,7 +1250,7 @@ Yii支持部分视图，所以，如果你有一个块，其中没有太多的�
 
 1. 创建一个控制器`@app/controllers/BlogController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use yii\web\Controller;
@@ -1277,7 +1277,7 @@ class BlogController extends Controller
 
 2. 创建一个名为`@app/views/common/twitter.php`的视图文件，并粘贴从Twitter复制过来的嵌入代码。你将会得到如下代码：
 
-```
+```php
 <?php
 /* @var $this \yii\web\View */
 /* @var $widget_id integer */
@@ -1301,7 +1301,7 @@ class BlogController extends Controller
 
 3. 创建一个视图`@app/views/blog/index.php`：
 
-```
+```php
 <?php
 /* @var $category string */
 /* @var $posts array */
@@ -1327,7 +1327,7 @@ class BlogController extends Controller
 
 4. 使用如下内容替换`@app/views/site/about.php`文件的内容：
 
-```
+```php
 <?php
 use yii\helpers\Html;
 /* @var $this yii\web\View */
@@ -1380,13 +1380,13 @@ Yii的一个特性是，你可以在你的视图中使用blocks。基本的思�
 1. 对于我们的例子，我们需要在我们的布局中定义两个区域——`beforeContent`和`footer`。
 2. 打开`@app/views/layouts/main.php`并将如下内容插入到内容输出前：
 
-```
+```php
 <?php if(!empty($this->blocks['beforeContent'])) echo $this->blocks['beforeContent']; ?>
 ```
 
 3. 然后，使用如下代码替换footer代码：
 
-```
+```php
 <footer class="footer">
     <div class="container">
         <?php if (!empty($this->blocks['footer'])):
@@ -1401,7 +1401,7 @@ Yii的一个特性是，你可以在你的视图中使用blocks。基本的思�
 
 4. 完成了！然后，添加一个新的动作到`controllers/SiteController.php`，名叫`blocks`：
 
-```
+```php
 public function actionBlocks()
 {
     return $this->render('blocks');
@@ -1410,7 +1410,7 @@ public function actionBlocks()
 
 5. 现在，创建一个视图文件`views/site/blocks.php`：
 
-```
+```php
 <?php
 use \yii\Helpers\Html;
 /* @var $this \yii\web\View */
@@ -1451,7 +1451,7 @@ $this->endBlock(); ?>
 
 1. 首先，我们将会创建一个装饰器文件`@app/views/decorators/quote.php`：
 
-```
+```php
 <div class="quote">
     <h2>&ldquo;<?= $content?>&rdquo;, <?= $author?></h2>
 </div>
@@ -1459,7 +1459,7 @@ $this->endBlock(); ?>
 
 2. 现在，使用如下代码替换`@app/views/site/index.php`文件的内容：
 
-```
+```php
 <?php
 use yii\widgets\ContentDecorator;
 /* @var */
@@ -1503,7 +1503,7 @@ use yii\widgets\ContentDecorator;
 
 1. 在`views/layouts`中创建两个布局：`blog`和`articles`。`blog`的代码如下：
 
-```
+```php
 <?php $this->beginContent('//layouts/main')?>
     <div>
         <?= $content ?>
@@ -1525,7 +1525,7 @@ use yii\widgets\ContentDecorator;
 
 2. `articles`的代码如下：
 
-```
+```php
 <?php
 /* @var $this yii\web\View */
 ?>
@@ -1548,7 +1548,7 @@ use yii\widgets\ContentDecorator;
 
 3. 创建一个视图文件`views/site/content.php`：
 
-```
+```htmlphp
 <h1>Title</h1>
 <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit,
 sed do eiusmod tempor incididunt ut labore et dolore magna
@@ -1560,7 +1560,7 @@ cillum dolore eu fugiat nulla pariatur.</p>
 
 4. 创建三个控制器，名叫`BlogController`、`ArticleController`、`PortfolioController`，每一个都一个index动作。`controllers/BlogController.php`文件内容如下：
 
-```
+```php
 <?php
 namespace app\controllers;
 use yii\web\Controller;
@@ -1576,7 +1576,7 @@ class BlogController extends Controller
 
 5. `controllers/ArticleController.php`文件的内容如下：
 
-```
+```php
 <?php
 namespace app\controllers;
 use yii\web\Controller;
@@ -1592,7 +1592,7 @@ class ArticleController extends Controller
 
 6. `controllers/PortfolioController.php`文件的内容如下：
 
-```
+```php
 <?php
 namespace app\controllers;
 use yii\web\Controller;
@@ -1645,7 +1645,7 @@ class PortfolioController extends Controller
 
 1. 首先，你需要创建`@app/controllers/FilmController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\Film;
@@ -1681,7 +1681,7 @@ class FilmController extends Controller
 
 2. 现在，让我们实现`@app/views/film/index.php`：
 
-```
+```php
 <?php
 use yii\widgets\LinkPager;
 /**
