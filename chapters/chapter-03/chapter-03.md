@@ -1,4 +1,4 @@
-# 第3章 ActiveRecord, Model, 数据库
+# 第3章 ActiveRecord, 模型, 数据库
 
 在本章中，我们将会讨论如下话题：
 
@@ -41,7 +41,7 @@ Yii引入了三种方法来允许你使用数据库。他们是：
 
 1. 创建`app/controllers/DbController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\Actor;
@@ -222,7 +222,7 @@ f.title';
 2. 创建两个MySQL数据库，名字分别叫`db1`和`db2`。
 3. 在`db1`中创建一个名叫`post`的表：
 
-```
+```sql
 DROP TABLE IF EXISTS 'post';
 CREATE TABLE IF NOT EXISTS 'post' (
   'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS 'post' (
 
 4. 在`db2`中创建一个名叫`comment`的表：
 
-```
+```sql
 DROP TABLE IF EXISTS 'comment';
 CREATE TABLE IF NOT EXISTS 'comment' (
   'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -248,7 +248,7 @@ CREATE TABLE IF NOT EXISTS 'comment' (
 
 1. 首先配置数据库连接。打开`config/main.php`文件，按照官方指南中的描述，定义一个主连接：
 
-```
+```php
 'db' => [
     'connectionString' =>'mysql:host=localhost;dbname=db1',
     'username' => 'root',
@@ -259,7 +259,7 @@ CREATE TABLE IF NOT EXISTS 'comment' (
 
 2. 复制它，重命名`db`组件为`db2`，并相应修改`connectionString`。同时，你需要按照如下方式添加`class`：
 
-```
+```php
 'db2' => [
     'class'=>'yii\db\Connection',
     'connectionString' => 'mysql:host=localhost;dbname=db2',
@@ -271,7 +271,7 @@ CREATE TABLE IF NOT EXISTS 'comment' (
 
 3. 现在你有两个数据库连接，你可以按如下方式利用DAO和Query Builder使用它们：
 
-```
+```php
 $rows1 = Yii::$app->db->createCommand($sql)->queryAll();
 $rows2 = Yii::$app->db2->createCommand($sql)->queryAll();
 ```
@@ -282,7 +282,7 @@ $rows2 = Yii::$app->db2->createCommand($sql)->queryAll();
 
 5. 现在你可以按往常一样使用`Comment`模型，并创建`controllers/DbController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\Post;
@@ -334,7 +334,7 @@ class DbController extends Controller
 
 如果你使用的是MySQL，你可以为你的模型创建跨数据库的关系。为了做到这一步，你应该为`Comment`模型的表名添加数据库名称：
 
-```
+```php
 class Comment extends \yii\db\ActiveRecord
 {
 //...
@@ -348,7 +348,7 @@ class Comment extends \yii\db\ActiveRecord
 
 现在，如果在`Post`模型中你定义了一个评论关系，你可以按如下方式使用：
 
-```
+```php
 $posts = Post::find()->joinWith('comments')->all();
 ```
 
@@ -365,7 +365,7 @@ $posts = Post::find()->joinWith('comments')->all();
 1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 2. 设置数据库连接，创建一个名为`post`的表：
 
-```
+```sql
 DROP TABLE IF EXISTS ''post'';
 CREATE TABLE IF NOT EXISTS ''post'' (
 ''id'' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -385,7 +385,7 @@ VALUES (1,''en_us'',''Yii news'',''Text in English''),
 
 1. 为`models/PostQuery.php`添加如下方法：
 
-```
+```php
 <?php
 namespace app\models;
 /**
@@ -409,7 +409,7 @@ class PostQuery extends \yii\db\ActiveQuery
 
 2. 现在，我们可以使用我们的模型。创建`controllers/DbController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\Post;
@@ -470,7 +470,7 @@ Yii中实现的Active Record非常强大，并有很多特性。其中一个特�
 1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 2. 设置数据库连接并创建一个名叫`post`的表：
 
-```
+```sql
 DROP TABLE IF EXISTS 'post';
 CREATE TABLE IF NOT EXISTS 'post' (
   'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -486,7 +486,7 @@ CREATE TABLE IF NOT EXISTS 'post' (
 
 1. 添加如下方法到`models/Post.php`：
 
-```
+```php
 /**
 * @param bool $insert
 *
@@ -505,7 +505,7 @@ public function beforeSave($insert)
 
 2. 现在尝试保存一个包含链接的帖子，创建`controllers/TestController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\Post;
@@ -560,7 +560,7 @@ html#active-record-life-cycles)。
 1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 2. 设置数据库连接并创建一个表名叫`blog_post`：
 
-```
+```sql
 DROP TABLE IF EXISTS 'blog_post';
 CREATE TABLE IF NOT EXISTS 'blog_post' (
   'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -578,7 +578,7 @@ CREATE TABLE IF NOT EXISTS 'blog_post' (
 
 1. 将如下方法添加到`models/BlogPost.php`：
 
-```
+```php
 /**
  * @return array
  */
@@ -596,7 +596,7 @@ public function behaviors()
 
 2. 创建`controllers/TestController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\BlogPost;
@@ -637,7 +637,7 @@ tension of holiday shopping.';
 
 根据这些字段使用behavior来配置我们的模型。此外，我们应该添加我们的behavior的代码到我们的`Post`模型：
 
-```
+```php
 <?php
 namespace app\models;
 use Yii;
@@ -669,13 +669,13 @@ class Post extends \yii\db\ActiveRecord
 
 在一些场景中，你可能希望保存时间戳。例如你希望给一个特定的控制器动作更新`last_login`字段。在这种情况下，你可以使用如下方式触发时间戳更新：
 
-```
+```php
 $model->touch('last_login');
 ```
 
 注意`touch()`不能用于新模型，否则你得到`InvalidCallException`异常：
 
-```
+```php
 $model = new Post();
 $model->touch('creation_date');
 ```
@@ -697,7 +697,7 @@ $model->touch('creation_date');
 1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 2. 设置数据库连接并创建一个名叫`blog_post`的表：
 
-```
+```sql
 DROP TABLE IF EXISTS 'blog_post';
 CREATE TABLE IF NOT EXISTS 'blog_post' (
   'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -715,7 +715,7 @@ CREATE TABLE IF NOT EXISTS 'blog_post' (
 
 1. 添加如下`behaviors`方法到`models/BlogPost.php`：
 
-```
+```php
 <?php
 namespace app\models;
 use Yii;
@@ -753,7 +753,7 @@ class BlogPost extends \yii\db\ActiveRecord
 
 2. 创建`controllers/TestController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\BlogPost;
@@ -802,7 +802,7 @@ class TestController extends Controller
 
 有时我们希望使用一个id填充`author_id`和`updater_id`，而不是当前用户。在这种情况下，我们需要拆除这个行为：
 
-```
+```php
 $model->detachBehavior('blammable');
 ```
 
@@ -821,7 +821,7 @@ $model->detachBehavior('blammable');
 1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 2. 设置数据库连接，并创建一个名为`blog_post`的表：
 
-```
+```sql
 DROP TABLE IF EXISTS 'blog_post';
 CREATE TABLE IF NOT EXISTS 'blog_post' (
   'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -838,7 +838,7 @@ CREATE TABLE IF NOT EXISTS 'blog_post' (
 
 1. 为`models/BlogPost.php`添加如下`behaviors`方法：
 
-```
+```php
 <?php
 namespace app\models;
 use Yii;
@@ -864,7 +864,7 @@ class BlogPost extends \yii\db\ActiveRecord
 
 2. 创建`controllers/TestController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\BlogPost;
@@ -923,7 +923,7 @@ class TestController extends Controller
 1. 使用Gii为模型`app\models\Post`生成CRUD和控制器`app\controllers\BlogPostController`。
 2. 添加如下动作到`app\controllers\BlogPostController`：
 
-```
+```php
 /**
  * @param $slug
  *
@@ -949,7 +949,7 @@ public function actionSlug($slug)
 4. 建议使用一个`Post`模型的实例完成先前的slug小节。
 5. 为了美化URL，在`config/web.php`中添加如下`urlManager`组件：
 
-```
+```php
 //..
 'urlManager' => [
     'enablePrettyUrl' => true,
@@ -1000,7 +1000,7 @@ Yii2支持强大的带有保存点的事务机制。
 
 3. 同时，使用如下代码更新刚刚创建的migration：
 
-```
+```php
 <?php
 use yii\db\Schema;
 use yii\db\Migration;
@@ -1040,7 +1040,7 @@ class m150620_062034_create_account_table extends Migration
 
 7. 同时，使用如下代码更新刚刚创建的migration：
 
-```
+```php
 <?php
 use yii\db\Migration;
 use app\models\Account;
@@ -1071,7 +1071,7 @@ class m150620_063252_add_account_records extends Migration
 
 1. 添加如下规则到`models/Account.php`中的`rules`方法：
 
-```
+```php
 public function rules()
 {
     return [
@@ -1085,7 +1085,7 @@ public function rules()
 2. 假设balance只能是正的，不能是负值。
 3. 给`TestController`创建success和error动作：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\Account;
@@ -1178,7 +1178,7 @@ class TestController extends Controller
 1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 2. 设置数据库连接并创建一个名叫`post`的表：
 
-```
+```sql
 DROP TABLE IF EXISTS 'blog_post';
 CREATE TABLE IF NOT EXISTS 'blog_post' (
   'id' INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -1194,7 +1194,7 @@ CREATE TABLE IF NOT EXISTS 'blog_post' (
 4. 按照文章[https://www.digitalocean.com/community/tutorials/how-to-set-up-master-slave-replication-inmysql/](https://www.digitalocean.com/community/tutorials/how-to-set-up-master-slave-replication-inmysql/)中的描述，在你的数据库服务器之间，配置主从复制。
 5. 在`config/main.php`中配置`db`组件，下面是个例子：
 
-```
+```php
 'components' => [
     // ..
     'db' => [
@@ -1220,7 +1220,7 @@ CREATE TABLE IF NOT EXISTS 'blog_post' (
 
 1. 创建`TestController.php`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\BlogPost;
@@ -1297,7 +1297,7 @@ Car
 1. 按照官方指南[http://www.yiiframework.com/doc-2.0/guide-start-installation.html](http://www.yiiframework.com/doc-2.0/guide-start-installation.html)的描述，使用Composer包管理器创建一个新的应用。
 2. 创建并设置一个数据库，添加如下表格：
 
-```
+```sql
 DROP TABLE IF EXISTS 'car';
 CREATE TABLE 'car' (
   'id' int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -1319,7 +1319,7 @@ INSERT INTO 'car' ('name', 'type')
 
 1. 添加如下方法和属性到`models/CarQuery.php`：
 
-```
+```php
 /**
  * @var
  */
@@ -1340,7 +1340,7 @@ public function prepare($builder)
 
 2. 创建`models/SportCar.php`：
 
-```
+```php
 <?php
 namespace app\models;
 use Yii;
@@ -1374,7 +1374,7 @@ class SportCar extends Car
 
 3. 创建`models/FamilyCar.php`：
 
-```
+```php
 <?php
 namespace app\models;
 use Yii;
@@ -1408,7 +1408,7 @@ class FamilyCar extends Car
 
 4. 添加如下方法到`models/Car.php`：
 
-```
+```php
 /**
  * @param array $row
  *
@@ -1429,7 +1429,7 @@ public static function instantiate($row)
 
 5. 添加`TestController`：
 
-```
+```php
 <?php
 namespace app\controllers;
 use app\models\Car;
