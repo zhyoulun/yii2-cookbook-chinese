@@ -1,14 +1,4 @@
-# 第一章 基础
-
-在本章中，我们将会覆盖如下一些话题：
-- 安装框架
-- 应用模板
-- 依赖注入容器
-- 服务定位器
-- 代码生成器
-- 配置组件
-- 使用事件
-- 使用外部代码
+# 
 
 ## 介绍
 
@@ -77,14 +67,14 @@ composer global require "fxp/composer-asset-plugin:^1.2.0"
 
 它提供了一个简单的方法，可以从Bower库中加载相关的非PHP包（Javascript和CSS）。
 
-2. 在这个新的basic目录中创建一个新的应用：
+1. 在这个新的basic目录中创建一个新的应用：
 
 ```
 composer create-project --prefer-dist iisoft/yii2-app-basic
 basic
 ```
 
-3. 检查你的PHP是否包含必需的扩展：
+1. 检查你的PHP是否包含必需的扩展：
 
 ```
 cd basic
@@ -93,15 +83,15 @@ php requirements.php
 
 **注意**：PHP在命令行模式和web界面模式可以使用不同的php.ini文件，从而可以使用不同的配置和不同的扩展。
 
-4. 创建一个新的数据库（如果这对你的项目是必需的）并在`config/db.php`文件中配置。
+1. 创建一个新的数据库（如果这对你的项目是必需的）并在`config/db.php`文件中配置。
 
-5. 尝试通过如下控制台命令运行应用：
+2. 尝试通过如下控制台命令运行应用：
 
 ```
 php yii serve
 ```
 
-6. 在你的浏览器中通过访问网址[http://localhost:8080](http://localhost:8080)来检查应用是否工作：
+1. 在你的浏览器中通过访问网址[http://localhost:8080](http://localhost:8080)来检查应用是否工作：
 
 ![](../images/101.png)
 
@@ -119,13 +109,13 @@ composer global require "fxp/composer-asset-plugin:^1.2.0"
 
 它提供了一个简单的方法，可以从Bower库中加载相关的非PHP包（Javascript和CSS）。
 
-2. 在这个新的basic目录中创建一个新的应用：
+1. 在这个新的basic目录中创建一个新的应用：
 
 ```
 composer create-project --prefer-dist yiisoft/yii2-app-advanced advanced
 ```
 
-3. 然而这个新应用不包含本地配置文件和index.php入口脚本。为了生成这些文件只需要初始化一个工作环境：
+1. 然而这个新应用不包含本地配置文件和index.php入口脚本。为了生成这些文件只需要初始化一个工作环境：
 
 ```
 cd advanced
@@ -134,7 +124,7 @@ php init
 
 在初始化过程中选择开发环境。
 
-4. 检查你的PHP是否包含了必需的扩展：
+1. 检查你的PHP是否包含了必需的扩展：
 
 ```
 php requirements.php
@@ -142,9 +132,9 @@ php requirements.php
 
 **注意**：PHP在命令行模式和web界面模式可以使用不同的php.ini文件，从而可以使用不同的配置和不同的扩展。
 
-5. 创建一个新的数据库，并在`common/config/mainlocal.php`文件中配置。
+1. 创建一个新的数据库，并在`common/config/mainlocal.php`文件中配置。
 
-6. 执行这个应用迁移：
+2. 执行这个应用迁移：
 
 ```
 php yii migrate
@@ -152,7 +142,7 @@ php yii migrate
 
 这个命令将会自动在你的数据库中创建一个用户表。
 
-7. 尝试通过如下控制台命令运行一个前端应用：
+1. 尝试通过如下控制台命令运行一个前端应用：
 
 ```
 php yii serve --docroot=@frontend/web --port=8080
@@ -164,7 +154,7 @@ php yii serve --docroot=@frontend/web --port=8080
 php yii serve --docroot=@backend/web --port=8090
 ```
 
-8. 通过访问网址[http://localhost:8080](http://localhost:8080)和[http://localhost:8090](http://localhost:8090)在你的浏览器中检查应用是否工作：
+1. 通过访问网址[http://localhost:8080](http://localhost:8080)和[http://localhost:8090](http://localhost:8090)在你的浏览器中检查应用是否工作：
 
 ![](../images/102.png)
 
@@ -277,7 +267,7 @@ $otherService = Yii::createObject('app\services\OtherService')
 
 ### 准备
 
-按照官方向导http://www.yiiframework.com/doc-2.0/guide-startinstallation.html中的描述，使用Composer包管理器创建一个新应用。
+按照官方向导[http://www.yiiframework.com/doc-2.0/guide-startinstallation.html中的描述，使用Composer包管理器创建一个新应用。](http://www.yiiframework.com/doc-2.0/guide-startinstallation.html中的描述，使用Composer包管理器创建一个新应用。)
 
 ### 如何做...
 
@@ -337,11 +327,11 @@ class ShoppingCart
 }
 ```
 
-2. 它将只会和它自己的项工作。并不是内置地将项目存放在session，它将这个任务委派给了任意的外部存储类，这些类需要实现StorageInterface接口。
+1. 它将只会和它自己的项工作。并不是内置地将项目存放在session，它将这个任务委派给了任意的外部存储类，这些类需要实现StorageInterface接口。
 
-3. 这个购物车类只是在它自己的构造器中获取了存储对象，将它保存在私有的$storage字段里，并通过load()和save()方法来调用。
+2. 这个购物车类只是在它自己的构造器中获取了存储对象，将它保存在私有的$storage字段里，并通过load\(\)和save\(\)方法来调用。
 
-4. 使用必需的方法定义一个常用的手推车存储接口：
+3. 使用必需的方法定义一个常用的手推车存储接口：
 
 ```
 <?php
@@ -359,7 +349,7 @@ interface StorageInterface
 }
 ```
 
-5. 创建一个简单的存储实现。它将会在一个服务器session存储选择的项：
+1. 创建一个简单的存储实现。它将会在一个服务器session存储选择的项：
 
 ```
 <?php
@@ -385,9 +375,9 @@ class SessionStorage implements StorageInterface
 }
 ```
 
-6. 这个存储可以在它的构造器中获取任意框架session实例，然后使用它来获取和存储项目。
+1. 这个存储可以在它的构造器中获取任意框架session实例，然后使用它来获取和存储项目。
 
-7. 在config/web.php文件中配置ShoppingCart类和它的依赖：
+2. 在config/web.php文件中配置ShoppingCart类和它的依赖：
 
 ```
 <?php
@@ -402,7 +392,7 @@ $params = require(__DIR__ . '/params.php');
 //…
 ```
 
-8. 基于一个扩展的构造器创建cart控制器：
+1. 基于一个扩展的构造器创建cart控制器：
 
 ```
 <?php
@@ -461,7 +451,7 @@ class CartController extends Controller
 }
 ```
 
-9. 创建一个form：
+1. 创建一个form：
 
 ```
 <?php
@@ -481,7 +471,7 @@ class CartAddForm extends Model
 }
 ```
 
-10. 创建视图文件views/cart/index.php：
+1. 创建视图文件views/cart/index.php：
 
 ```
 <?php
@@ -512,7 +502,7 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 ```
 
-11. 创建视图文件views/cart/add.php：
+1. 创建视图文件views/cart/add.php：
 
 ```
 <?php
@@ -538,7 +528,7 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 ```
 
-12. 添加链接项目到主菜单：
+1. 添加链接项目到主菜单：
 
 ```
 ['label' => 'Home', 'url' => ['/site/index']],
@@ -547,7 +537,7 @@ $this->params['breadcrumbs'][] = $this->title;
 // …
 ```
 
-13. 打开cart页并尝试添加几行：
+1. 打开cart页并尝试添加几行：
 
 ![](../images/103.png)
 
@@ -676,13 +666,12 @@ public function actionDelete($id)
     $this->cart->remove($id);
     return $this->redirect(['index']);
 }
-
 ```
 
 ### 参考
 
-- 更多关于DIP的信息，参见[https://en.wikipedia.org/wiki/Dependency_inversion_principle](https://en.wikipedia.org/wiki/Dependency_inversion_principle)
-- 欲了解更多关于依赖注入控制，参见[https://en.wikipedia.org/wiki/Dependency_inversion_principle](https://en.wikipedia.org/wiki/Dependency_inversion_principle)
+* 更多关于DIP的信息，参见[https://en.wikipedia.org/wiki/Dependency\_inversion\_principle](https://en.wikipedia.org/wiki/Dependency_inversion_principle)
+* 欲了解更多关于依赖注入控制，参见[https://en.wikipedia.org/wiki/Dependency\_inversion\_principle](https://en.wikipedia.org/wiki/Dependency_inversion_principle)
 
 ## 服务定位器
 
@@ -754,7 +743,7 @@ class ShoppingCart extends Component
 }
 ```
 
-2. 在文件config/web.php中以应用组件的方式，注册ShoppingCart到服务定位器中：
+1. 在文件config/web.php中以应用组件的方式，注册ShoppingCart到服务定位器中：
 
 ```
 'components' => [
@@ -766,7 +755,7 @@ class ShoppingCart extends Component
 ]
 ```
 
-3. 创建一个手推车控制器：
+1. 创建一个手推车控制器：
 
 ```
 <?php
@@ -819,7 +808,7 @@ class CartController extends Controller
 }
 ```
 
-4. 创建一个表单：
+1. 创建一个表单：
 
 ```
 <?php
@@ -839,7 +828,7 @@ class CartAddForm extends Model
 }
 ```
 
-5. 创建视图文件views/cart/index.php：
+1. 创建视图文件views/cart/index.php：
 
 ```
 <?php
@@ -870,7 +859,7 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 ```
 
-6. 创建视图文件views/cart/add.php：
+1. 创建视图文件views/cart/add.php：
 
 ```
 <?php
@@ -896,7 +885,7 @@ $this->params['breadcrumbs'][] = $this->title;
 </div>
 ```
 
-7. 添加链接项到主菜单中：
+1. 添加链接项到主菜单中：
 
 ```
 ['label' => 'Home', 'url' => ['/site/index']],
@@ -905,7 +894,7 @@ $this->params['breadcrumbs'][] = $this->title;
 // …
 ```
 
-8. 打开手推车页面，并尝试添加几行：
+1. 打开手推车页面，并尝试添加几行：
 
 ![](../images/104.png)
 
@@ -951,7 +940,7 @@ $cart = Yii::$app->get('cart');
 Yii::$app->cart
 ```
 
-我们在Yii::$app静态变量中调用Application类实例的这个虚拟属性。但是yii\base\Application类继承了yii\base\Module class，后者继承了带有__call魔术方法的yii\di\ServiceLocator类。这个魔术方法只是调用yii\di\ServiceLocator 类的get()方法：
+我们在Yii::$app静态变量中调用Application类实例的这个虚拟属性。但是yii\base\Application类继承了yii\base\Module class，后者继承了带有\_\_call魔术方法的yii\di\ServiceLocator类。这个魔术方法只是调用yii\di\ServiceLocator 类的get\(\)方法：
 
 ```
 <?php
@@ -978,7 +967,7 @@ class ServiceLocator extends Component
 Yii::$app->get('cart');
 ```
 
-当我们从服务定位器的get方法获取到一个组件，定位器在它的_definitions列表中查找需要的定义，并且如果成功它会创建一个新的对象by the definition on the fly，并将它注册到它自己的完整的实例列表_components中，然后返回这个对象。
+当我们从服务定位器的get方法获取到一个组件，定位器在它的\_definitions列表中查找需要的定义，并且如果成功它会创建一个新的对象by the definition on the fly，并将它注册到它自己的完整的实例列表\_components中，然后返回这个对象。
 
 如果我们获取一些组件，multiplying定位器总会一次次返回先前保存的实例：
 
@@ -988,13 +977,13 @@ $cart2 = Yii::$app->cart;
 var_dump($cart1 === $cart2); // bool(true)
 ```
 
-它能让我们使用共享的单cart实例Yii::$app->cart或者单数据库连接Yii::$app->db，而不是一次又一次从头创建。
+它能让我们使用共享的单cart实例Yii::$app-&gt;cart或者单数据库连接Yii::$app-&gt;db，而不是一次又一次从头创建。
 
 ### 参考
 
-- 想要了解更多关于服务定位器的信息，以及核心框架组件，可以参考[http://www.yiiframework.com/doc-2.0/guide-concept-service-locator.html](http://www.yiiframework.com/doc-2.0/guide-concept-service-locator.html)
-- 配置组件章节
-- 《Extending Yii》第8章中的创建组件章节
+* 想要了解更多关于服务定位器的信息，以及核心框架组件，可以参考[http://www.yiiframework.com/doc-2.0/guide-concept-service-locator.html](http://www.yiiframework.com/doc-2.0/guide-concept-service-locator.html)
+* 配置组件章节
+* 《Extending Yii》第8章中的创建组件章节
 
 ## 代码生成器
 
@@ -1012,18 +1001,18 @@ Yii2提供了强大的模块Gii来生成模型、控制器和视图，并在此�
 
 ### 如何做...
 
-1. 访问网址http://localhost:8080/index.php?r=gii，并选择模型生成器（Model Generator）。
+1. 访问网址[http://localhost:8080/index.php?r=gii，并选择模型生成器（Model](http://localhost:8080/index.php?r=gii，并选择模型生成器（Model) Generator）。
 2. 填写表名（Table Name）actor和模型类（Model Class）Actor，并点击页面底部的生成（Generate）按钮。
 
 ![](../images/105.png)
 
-3. 点击yii代码生成器（yii code generator）logo返回到Gii主菜单，并选择CRUD生成器（CRUD Generator）。
-4. 填写Model Class内容app\models\Actor和Controller Class内容app\controllers\ActorController。
+1. 点击yii代码生成器（yii code generator）logo返回到Gii主菜单，并选择CRUD生成器（CRUD Generator）。
+2. 填写Model Class内容app\models\Actor和Controller Class内容app\controllers\ActorController。
 
 ![](../images/106.png)
 
-5. 点击页面底部的预览（Preview）按钮，并点击绿色生成（Generate）按钮。
-6. 访问网址http://localhost:8080/index.php?actor/create检查生成的效果。
+1. 点击页面底部的预览（Preview）按钮，并点击绿色生成（Generate）按钮。
+2. 访问网址[http://localhost:8080/index.php?actor/create检查生成的效果。](http://localhost:8080/index.php?actor/create检查生成的效果。)
 
 ![](../images/107.png)
 
@@ -1033,7 +1022,7 @@ Yii2提供了强大的模块Gii来生成模型、控制器和视图，并在此�
 
 ![](../images/108.png)
 
-首先我们已经创建了Actor模型。Gii自动创建所有的模型规则，这依赖于mysql字段类型。例如，如果在你的MySQL数据库actor表中，字段first_name和last_name有IS NOT NULL标志，那么Yii会自动为它们创建规则required，并设置最大长度为45个字符，因为在我们的数据库中，这个字段的最大长度被设置成了45。
+首先我们已经创建了Actor模型。Gii自动创建所有的模型规则，这依赖于mysql字段类型。例如，如果在你的MySQL数据库actor表中，字段first\_name和last\_name有IS NOT NULL标志，那么Yii会自动为它们创建规则required，并设置最大长度为45个字符，因为在我们的数据库中，这个字段的最大长度被设置成了45。
 
 ```
 public function rules()
@@ -1059,7 +1048,7 @@ public function getFilms()
 }
 ```
 
-创建这个关系的原因是在数据库中我们有两个外键。film_actor表的外键fk_film_actor_actor指向了actor表中的actor_id字段，外键fk_film_actor_film指向了film表中的film_id字段。
+创建这个关系的原因是在数据库中我们有两个外键。film\_actor表的外键fk\_film\_actor\_actor指向了actor表中的actor\_id字段，外键fk\_film\_actor\_film指向了film表中的film\_id字段。
 
 注意你还没有生成FilmActor模型。所以，如果你希望开发完善的app，而不只是一个demo，你必须生成Film、FilmActor模型。接下来的内容，可以参考[http://www.yiiframework.com/doc-2.0/guide-start-gii.html](http://www.yiiframework.com/doc-2.0/guide-start-gii.html)。
 
@@ -1092,11 +1081,11 @@ return [
 ];
 ```
 
-当你希望在应用的所有部分使用一个控件时，就需要使用配置控件的方法。在之前的配置中，你可以通过控件的名字访问它，例如Yii::$app->db。
+当你希望在应用的所有部分使用一个控件时，就需要使用配置控件的方法。在之前的配置中，你可以通过控件的名字访问它，例如Yii::$app-&gt;db。
 
 ### 工作原理...
 
-当你第一次直接或者通过Active Record模型使用Yii::$app->db控件时，Yii创建了一个模型，并使用应用配置文件中的component部分中db数组初始化它的公共属性。在先前的代码中，dsn会被赋值给yii\db\Connection::dsn，username会被赋值给Connection::username，等等。
+当你第一次直接或者通过Active Record模型使用Yii::$app-&gt;db控件时，Yii创建了一个模型，并使用应用配置文件中的component部分中db数组初始化它的公共属性。在先前的代码中，dsn会被赋值给yii\db\Connection::dsn，username会被赋值给Connection::username，等等。
 
 如果你想找到charset代表的意思，或者想知道db控件中其它可以配置项，你需要知道它的类。在db控件这个例子中，类是yii\db\Connection。你只需要打开这个类，并查看它的公共属性，这些你可以从配置中设置。
 
@@ -1121,21 +1110,22 @@ return [
 #### 内置控件
 
 现在，我们来看看YIi都有哪些标准控件可供配置。有两个应用类型绑定了Yii：
-- Web应用（yii\ webApplication）
-- 控制台应用（yii\console\Application）
+
+* Web应用（yii webApplication）
+* 控制台应用（yii\console\Application）
 
 这两个都继承自yii\base\Application，所以控制台和web应用共用这些模板。
 
-你可以从应用的方法coreComponents()的源代码获取这些控件的名称。
+你可以从应用的方法coreComponents\(\)的源代码获取这些控件的名称。
 
 你可以通过简单的添加新配置项目，并将它们的类属性指定你自定义的类，来添加你自己的应用控件（继承yii\base\Component）。
 
 ### 参考
 
-- 控制台和web应用控件列表参见http://www.yiiframework.com/doc-2.0/guide-structure-application-components.html
-- 更多关于创建自己控件的信息，参见：
-    + 服务定位器章节
-    + 第八章的创建控件章节
+* 控制台和web应用控件列表参见[http://www.yiiframework.com/doc-2.0/guide-structure-application-components.html](http://www.yiiframework.com/doc-2.0/guide-structure-application-components.html)
+* 更多关于创建自己控件的信息，参见：
+  * 服务定位器章节
+  * 第八章的创建控件章节
 
 ## 使用事件
 
@@ -1155,8 +1145,8 @@ CREATE TABLE 'article' (
 ) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8;
 ```
 
-3. 使用Gii生成Article模型。
-4. 使用./yii服务命令运行你的web服务器。
+1. 使用Gii生成Article模型。
+2. 使用./yii服务命令运行你的web服务器。
 
 ### 如何做...
 
@@ -1190,7 +1180,7 @@ public function actionTest()
 }
 ```
 
-2. 使用如下代码更新config/web.php控件mailer：
+1. 使用如下代码更新config/web.php控件mailer：
 
 ```
 'mailer' => [
@@ -1199,19 +1189,19 @@ public function actionTest()
 ],
 ```
 
-3. 在你的浏览器中访问如下网址：
+1. 在你的浏览器中访问如下网址：
 
-http://localhost:8080/index.php?r=site/test.
+[http://localhost:8080/index.php?r=site/test](http://localhost:8080/index.php?r=site/test).
 
-4. 另外检查http://www.fakemailgenerator.com/inbox/teleworm.us/john2/
+1. 另外检查[http://www.fakemailgenerator.com/inbox/teleworm.us/john2/](http://www.fakemailgenerator.com/inbox/teleworm.us/john2/)
 
 ![](../images/109.png)
 
 ### 工作原理...
 
-我们已经创建了一个Article模型，并在Article模型中为ActiveRecord::EVENT_AFTER_INSERT事件添加了一个handler。它意味着我们每次保存一个新文章，这个事件都会被触发，然后我们的handler就会被调用。
+我们已经创建了一个Article模型，并在Article模型中为ActiveRecord::EVENT\_AFTER\_INSERT事件添加了一个handler。它意味着我们每次保存一个新文章，这个事件都会被触发，然后我们的handler就会被调用。
 
-在现实世界中，我们也许希望在我们每次发布一个新文章时，通知我们的博客订阅者。在一个实际应用中，我们将会有一个follower或者user表，and with different blog sections not only single blog。在这个例子中，在保存好我们的模型以后，我们通知了我们的订阅者`john2@teleworm.us`、`shivawhite@cuvox.de`和`kate@dayrep.com`。在上一步中，我们只是证明了用户已经收到了我们的通知，特别是john2。你可以用任意名称创建你自己的事件，这里我们使用了一个内置的事件，叫做ActiveRecord::EVENT_AFTER_INSERT，它会在每次插入到数据库中调用。
+在现实世界中，我们也许希望在我们每次发布一个新文章时，通知我们的博客订阅者。在一个实际应用中，我们将会有一个follower或者user表，and with different blog sections not only single blog。在这个例子中，在保存好我们的模型以后，我们通知了我们的订阅者`john2@teleworm.us`、`shivawhite@cuvox.de`和`kate@dayrep.com`。在上一步中，我们只是证明了用户已经收到了我们的通知，特别是john2。你可以用任意名称创建你自己的事件，这里我们使用了一个内置的事件，叫做ActiveRecord::EVENT\_AFTER\_INSERT，它会在每次插入到数据库中调用。
 
 例如，我们可以创建我们自己的事件。只需要使用如下代码添加一个新的actionTestNew：
 
@@ -1242,7 +1232,7 @@ public function actionTestNew()
 }
 ```
 
-同时按照如下方式将EVENT_OUR_CUSTOM_EVENT常量加入到模型models/Article中：
+同时按照如下方式将EVENT\_OUR\_CUSTOM\_EVENT常量加入到模型models/Article中：
 
 ```
 class Article extends \yii\db\ActiveRecord
@@ -1252,15 +1242,15 @@ class Article extends \yii\db\ActiveRecord
 }
 ```
 
-访问http://localhost:8080/index.php?r=site/test-new。
+访问[http://localhost:8080/index.php?r=site/test-new。](http://localhost:8080/index.php?r=site/test-new。)
 
 你应该看到相同的结果，并且所有给订阅者的通知会再发一遍。主要的区别是我们使用了自定义的事件名。
 
-保存以后，我们触发了我们的事件。事件是通过调用yii\base\Component::trigger()触发的。这个方法需要一个事件名称，以及一个可选的事件对象，它描述了传递给事件handler的参数。
+保存以后，我们触发了我们的事件。事件是通过调用yii\base\Component::trigger\(\)触发的。这个方法需要一个事件名称，以及一个可选的事件对象，它描述了传递给事件handler的参数。
 
 ### 参考
 
-欲了解更多信息参见http://www.yiiframework.com/doc-2.0/guide-conceptevents.
+欲了解更多信息参见[http://www.yiiframework.com/doc-2.0/guide-conceptevents](http://www.yiiframework.com/doc-2.0/guide-conceptevents).  
 html
 
 ## 使用外部代码
@@ -1279,7 +1269,7 @@ Package repositories，PSR标准，以及社会编码给我们提供了许多高
 
 当你使用NoSQL或者其它没有自增key的数据库，你必须手工生成唯一识别符。例如，你可以使用通用唯一识别码（Universally Unique Identifier，UUID），而不是一个数值。按如下步骤做：
 
-1. 通过Composer安装https://github.com/ramsey/uuid控件：
+1. 通过Composer安装[https://github.com/ramsey/uuid控件：](https://github.com/ramsey/uuid控件：)
 2. 创建一个演示控制台控制器：
 
 ```
@@ -1300,13 +1290,13 @@ class UuidController extends Controller
 }
 ```
 
-3. 然后运行：
+1. 然后运行：
 
 ```
 ./yii uuid/generate
 ```
 
-4. 如果成功，你将会看到如下输出：
+1. 如果成功，你将会看到如下输出：
 
 ```
 25841e6c-6060-4a81-8368-4d99aa3617dd
@@ -1316,7 +1306,7 @@ fcac910a-a9dc-4760-8528-491c17591a26
 21a28940-c749-430d-908e-1893c52f1fe0
 ```
 
-5. 完成了！现在你可以在你的项目中使用Ramsey\Uuid\Uuid类了。
+1. 完成了！现在你可以在你的项目中使用Ramsey\Uuid\Uuid类了。
 
 #### 手动安装库
 
@@ -1338,7 +1328,7 @@ class Library
 }
 ```
 
-2. 创建old/OldLibrary.php文件：
+1. 创建old/OldLibrary.php文件：
 
 ```
 <?php
@@ -1351,7 +1341,7 @@ class OldLibrary
 }
 ```
 
-3. 创建函数的集合到文件old/functions.php中：
+1. 创建函数的集合到文件old/functions.php中：
 
 ```
 <?php
@@ -1363,7 +1353,7 @@ function simpleFunction()
 
 现在在我们的应用中设置这些文件：
 
-4. 在config/web.php中给awesome库命名空间根定义新的别名（在alias部分）：
+1. 在config/web.php中给awesome库命名空间根定义新的别名（在alias部分）：
 
 ```
 $config = [
@@ -1386,13 +1376,13 @@ $config = [
 Yii::setAlias('@awesome', '@app/awesome');
 ```
 
-5. 在文件config/web.php文件顶部定义一个简单的类文件路径：
+1. 在文件config/web.php文件顶部定义一个简单的类文件路径：
 
 ```
 Yii::$classMap['OldLibrary'] = '@old/OldLibrary.php';
 ```
 
-6. 在composer.json文件中配置function.php文件的自动加载：
+1. 在composer.json文件中配置function.php文件的自动加载：
 
 ```
 "require-dev": {
@@ -1410,7 +1400,7 @@ Yii::$classMap['OldLibrary'] = '@old/OldLibrary.php';
 
 composer update
 
-7. 现在创建一个控制器示例：
+1. 现在创建一个控制器示例：
 
 ```
 <?php
@@ -1495,7 +1485,10 @@ composer update
 
 ### 参考
 
-- 欲了解更多有关于在Yii2中集成外部代码以及将框架代码集成到自己项目中的信息，可以参考指南[http://www.yiiframework.com/doc-2.0/guide-tutorial-yiiintegration.html](http://www.yiiframework.com/doc-2.0/guide-tutorial-yiiintegration.html)
-- 更多关于alias的信息，参考[http://www.yiiframework.com/doc-2.0/guide-concept-aliases.html](http://www.yiiframework.com/doc-2.0/guide-concept-aliases.html)
-- `composer.json`中`autoload`部分的相关信息参考[https://getcomposer.org/doc/01-basic-usage.md#autoloading](https://getcomposer.org/doc/01-basic-usage.md#autoloading)
-- 你可以在[https://packagist.org](https://packagist.org)搜索和浏览任何Composer包。
+* 欲了解更多有关于在Yii2中集成外部代码以及将框架代码集成到自己项目中的信息，可以参考指南[http://www.yiiframework.com/doc-2.0/guide-tutorial-yiiintegration.html](http://www.yiiframework.com/doc-2.0/guide-tutorial-yiiintegration.html)
+* 更多关于alias的信息，参考[http://www.yiiframework.com/doc-2.0/guide-concept-aliases.html](http://www.yiiframework.com/doc-2.0/guide-concept-aliases.html)
+* `composer.json`中`autoload`部分的相关信息参考[https://getcomposer.org/doc/01-basic-usage.md\#autoloading](https://getcomposer.org/doc/01-basic-usage.md#autoloading)
+* 你可以在[https://packagist.org](https://packagist.org)搜索和浏览任何Composer包。
+
+
+
