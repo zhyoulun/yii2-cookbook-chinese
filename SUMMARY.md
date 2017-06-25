@@ -66,7 +66,17 @@
   * [频率限制](chapters/chapter-06/06-05.md)
   * [版本](chapters/chapter-06/06-06.md)
   * [错误处理](chapters/chapter-06/06-07.md)
-
+* [官方扩展](chapters/chapter-07/07-01.md)
+  * [介绍](chapters/chapter-07/07-02.md)
+  * [身份认证客户端](chapters/chapter-07/07-03.md)
+  * [SwitchMailer电子邮件库](chapters/chapter-07/07-04.md)
+  * [Fake fixture 数据生成器](chapters/chapter-07/07-05.md)
+  * [Imagine库](chapters/chapter-07/07-06.md)
+  * [MongoDB驱动](chapters/chapter-07/07-07.md)
+  * [ElasticSearch引擎适配器](chapters/chapter-07/07-08.md)
+  * [Gii代码生成器](chapters/chapter-07/07-09.md)
+  * [Pjax JQuery插件](chapters/chapter-07/07-10.md)
+  * [Redis数据库驱动](chapters/chapter-07/07-11.md)
 
 
 
