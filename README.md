@@ -1,5 +1,11 @@
 # Yii Application Development Cookbook\(Third Edition\)翻译
 
+> translated by zhyoulun
+
+## github阅读地址
+
+[https://github.com/zhyoulun/yii2-cookbook-chinese](https://github.com/zhyoulun/yii2-cookbook-chinese)
+
 ## gitbook阅读地址
 
 [https://zhyoulun.gitbooks.io/yii2-cookbook-chinese/content/](https://zhyoulun.gitbooks.io/yii2-cookbook-chinese/content/)
