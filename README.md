@@ -4,7 +4,7 @@
 
 ## github阅读地址
 
-[https://github.com/zhyoulun/yii2-cookbook-chinese](https://github.com/zhyoulun/yii2-cookbook-chinese)
+[https://zhyoulun.github.io/yii2-cookbook-chinese/](https://zhyoulun.github.io/yii2-cookbook-chinese/)
 
 ## gitbook阅读地址
 
