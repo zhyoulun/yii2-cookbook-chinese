@@ -26,7 +26,7 @@
   * [使用装饰器](chapters/chapter-02/02-14.md)
   * [定义多个布局](chapters/chapter-02/02-15.md)
   * [页码和数据排序](chapters/chapter-02/02-16.md)
-* [第3章 ActiveRecord, 模型, 数据库](chapters/chapter-03/03-01.md)
+* [第三章 ActiveRecord, 模型, 数据库](chapters/chapter-03/03-01.md)
   * [介绍](chapters/chapter-03/03-02.md)
   * [从数据库中获取数据](chapters/chapter-03/03-03.md)
   * [定义和使用多个数据库连接](chapters/chapter-03/03-04.md)
